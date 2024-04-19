@@ -89,7 +89,9 @@
       google-chrome
       bitwarden
       yubioath-flutter
+      alacritty
     ];
+    useDefaultShell = true;
   };
 
   # Allow unfree packages
@@ -98,13 +100,16 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    vim
+    neovim
     wget
     curl
     tmux
     yubico-pam
     git
   ];
+
+  users.defaultUserShell = pkgs.zsh;
+  programs.zsh.enable = true;
 
   nix.settings.experimental-features = "nix-command flakes";
 
