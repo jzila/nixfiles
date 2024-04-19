@@ -4,6 +4,16 @@
 
 { config, pkgs, ... }:
 
+let
+  zsa = pkgs.stdenv.mkDerivation {
+    name = "zsa";
+    src = /home/john/repos/nixfiles/zsa;
+    installPhase = ''
+      mkdir -p $out
+      cp -r $src/* $out/
+    '';
+  };
+in
 {
   imports =
     [ # Include the results of the hardware scan.
@@ -70,6 +80,13 @@
     xkbVariant = "";
   };
 
+  # Udev rules
+  services.udev = {
+    packages = [
+      zsa
+    ];
+  };
+
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
@@ -106,11 +123,14 @@
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
+  # Extra groups
+  users.groups.plugdev = {};
+
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.john = {
     isNormalUser = true;
     description = "John Zila";
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [ "networkmanager" "wheel" "plugdev" ];
     packages = with pkgs; [
       firefox
       google-chrome
@@ -140,6 +160,7 @@
     dive
     podman-compose
     # build utils
+    nix-prefetch-scripts
     bun
     just
     earthly
