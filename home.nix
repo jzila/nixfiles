@@ -14,9 +14,9 @@
         "git"
         "vi-mode"
         "history-substring-search"
-	"zsh-autosuggestions"
-	"zsh-syntax-highlighting"
-	"bgnotify"
+        "zsh-autosuggestions"
+        "zsh-syntax-highlighting"
+        "bgnotify"
       ];
       extraConfig = ''
         zstyle ':completion:*' accept-exact-dirs true
