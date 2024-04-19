@@ -5,13 +5,8 @@
 { config, pkgs, ... }:
 
 let
-  zsa = pkgs.stdenv.mkDerivation {
-    name = "zsa";
-    src = /home/john/repos/nixfiles/zsa;
-    installPhase = ''
-      mkdir -p $out
-      cp -r $src/* $out/
-    '';
+  unstable = import <nixos-unstable> {
+    config = config.nixpkgs.config;
   };
 in
 {
@@ -78,13 +73,6 @@ in
   services.xserver = {
     layout = "us";
     xkbVariant = "";
-  };
-
-  # Udev rules
-  services.udev = {
-    packages = [
-      zsa
-    ];
   };
 
   # Enable CUPS to print documents.
@@ -164,6 +152,8 @@ in
     bun
     just
     earthly
+  ] ++ [
+    unstable.zsa-udev-rules
   ];
 
   users.defaultUserShell = pkgs.zsh;
@@ -203,5 +193,4 @@ in
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.11"; # Did you read the comment?
-
 }
