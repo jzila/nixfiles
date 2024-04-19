@@ -76,7 +76,18 @@
   # Enable sound with pipewire.
   sound.enable = true;
   hardware.pulseaudio.enable = false;
-  security.rtkit.enable = true;
+  security = {
+    rtkit.enable = true;
+    pam.services = {
+      sudo.u2fAuth = true;
+    };
+    sudo = {
+      enable = true;
+      extraConfig = ''
+        Defaults timestamp_timeout=1
+      '';
+    };
+  };
   services.pipewire = {
     enable = true;
     alsa.enable = true;
@@ -115,7 +126,7 @@
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     pciutils
-    yubico-pam
+    pam_u2f
     # shell utils
     neovim
     wget
