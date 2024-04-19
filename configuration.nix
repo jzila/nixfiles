@@ -132,12 +132,15 @@ in
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  home-manager.users.john.home.stateVersion = "23.11";
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     pciutils
     pam_u2f
     # shell utils
+    home-manager
     neovim
     wget
     curl
@@ -158,6 +161,7 @@ in
 
   users.defaultUserShell = pkgs.zsh;
   programs.zsh.enable = true;
+  programs.direnv.enable = true;
 
   nix.settings.experimental-features = "nix-command flakes";
 
