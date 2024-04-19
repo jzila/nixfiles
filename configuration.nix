@@ -140,7 +140,6 @@ in
     pciutils
     pam_u2f
     # shell utils
-    home-manager
     neovim
     wget
     curl
