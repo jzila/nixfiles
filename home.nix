@@ -1,6 +1,8 @@
 { config, pkgs, ... }:
 
 {
+  nixpkgs.config.allowUnfree = true;
+
   programs.zsh = {
     enable    = true;
     initExtra = ''
@@ -27,6 +29,11 @@
   home.homeDirectory = "/home/john";
   home.stateVersion = "23.11";
 
-  # Additional user-specific configurations
+  programs.vscode = {
+    enable = true;
+    extensions = with pkgs.vscode-extensions; [
+      vscodevim.vim
+    ];
+  };
 }
 
