@@ -155,9 +155,6 @@ in
     podman-compose
     # build utils
     nix-prefetch-scripts
-    bun
-    just
-    earthly
   ] ++ [
     unstable.zsa-udev-rules
   ];

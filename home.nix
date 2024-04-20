@@ -42,9 +42,12 @@ in
       vscodevim.vim
     ];
   };
-  home.packages = with pkgs; [
+  home.packages = [
+    pkgs.just
   ] ++ [
     unstable.nodejs_20
+    unstable.bun
+    unstable.earthly
   ];
 }
 
