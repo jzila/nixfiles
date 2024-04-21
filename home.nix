@@ -16,25 +16,46 @@ in
 
   programs.zsh = {
     enable    = true;
+    history = {
+      ignoreSpace = true;
+      extended = true;
+    };
+    enableCompletion = true;
+    syntaxHighlighting.enable = true;
+    historySubstringSearch.enable = true;
     initExtra = ''
+      ZSH_AUTOSUGGEST_STRATEGY=(history)
+
       . /home/john/repos/dotfiles/zshrc
     '';
     oh-my-zsh = {
       enable  = true;
-      custom  = "$HOME/repos/dotfiles/zsh_custom";
+      custom  = "/home/john/repos/dotfiles/zsh_custom";
       theme   = "jzila";
       plugins = [
         "git"
         "vi-mode"
-        "history-substring-search"
-        "zsh-autosuggestions"
-        "zsh-syntax-highlighting"
         "bgnotify"
+        "history-substring-search"
       ];
       extraConfig = ''
         zstyle ':completion:*' accept-exact-dirs true
       '';
     };
+  };
+  programs.tmux = {
+    enable = true;
+    secureSocket = true;
+    clock24 = true;
+    historyLimit = 10000;
+    terminal = "screen-256color";
+    plugins = with pkgs; [
+      tmuxPlugins.cpu
+      tmuxPlugins.battery
+    ];
+    extraConfig = ''
+      source-file /home/john/repos/dotfiles/tmux.conf
+    '';
   };
   programs.vscode = {
     enable = true;

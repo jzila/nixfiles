@@ -145,10 +145,10 @@ in
     pciutils
     pam_u2f
     # shell utils
+    bat
     neovim
     wget
     curl
-    tmux
     git
     # container utils
     podman-tui
