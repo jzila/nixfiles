@@ -136,6 +136,7 @@ in
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
+  # Enable home-manager
   home-manager.users.john.home.stateVersion = "23.11";
 
   # List packages installed in system profile. To search, run:
@@ -162,6 +163,10 @@ in
   users.defaultUserShell = pkgs.zsh;
   programs.zsh.enable = true;
   programs.direnv.enable = true;
+
+  programs.streamdeck-ui = {
+    enable = true;
+  };
 
   nix.settings.experimental-features = "nix-command flakes";
 
