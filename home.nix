@@ -40,11 +40,14 @@ in
     enable = true;
     extensions = with pkgs.vscode-extensions; [
       vscodevim.vim
+      github.copilot
+    ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
     ];
   };
   home.packages = [
     pkgs.just
   ] ++ [
+    unstable.python3Full
     unstable.nodejs_20
     unstable.bun
     unstable.earthly
