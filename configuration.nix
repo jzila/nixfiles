@@ -11,12 +11,16 @@ let
 in
 {
   imports =
-    [ # Include the results of the hardware scan.
+    [
+      # Base image for GA402
+      <nixos-hardware/asus/zephyrus/ga402>
+      # Include the results of the hardware scan.
       ./hardware-configuration.nix
       <home-manager/nixos>
     ];
 
   # Bootloader.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
