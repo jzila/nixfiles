@@ -1,9 +1,15 @@
 { config, pkgs, ... }:
 
 let
+  system = builtins.currentSystem;
   unstable = import <nixos-unstable> {
     config = config.nixpkgs.config;
   };
+  vscode-extensions = 
+    (import (builtins.fetchGit {
+      url = "https://github.com/nix-community/nix-vscode-extensions";
+      ref = "refs/heads/master";
+    })).extensions.${system};
 in
 {
   imports = [
@@ -63,10 +69,11 @@ in
   };
   programs.vscode = {
     enable = true;
-    extensions = with pkgs.vscode-extensions; [
-      vscodevim.vim
-      github.copilot
-    ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+    extensions = with vscode-extensions.vscode-marketplace; [
+      pkgs.vscode-extensions.github.copilot
+    ] ++ [
+      ms-vscode.vscode-typescript-next
+      bradlc.vscode-tailwindcss
     ];
   };
   home.packages = [
