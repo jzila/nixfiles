@@ -6,6 +6,10 @@ let
   };
 in
 {
+  imports = [
+    ./plasma/plasma.nix
+  ];
+
   home.username = "john";
   home.homeDirectory = "/home/john";
   home.stateVersion = "23.11";

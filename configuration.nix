@@ -16,7 +16,6 @@ in
       <nixos-hardware/asus/zephyrus/ga402>
       # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      <home-manager/nixos>
     ];
 
   # Bootloader.
@@ -140,9 +139,6 @@ in
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
-  # Enable home-manager
-  home-manager.users.john.home.stateVersion = "23.11";
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
@@ -154,6 +150,8 @@ in
     wget
     curl
     git
+    htop
+    home-manager
     # container utils
     podman-tui
     dive
