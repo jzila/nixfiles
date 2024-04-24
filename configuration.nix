@@ -8,10 +8,6 @@ let
   unstable = import <nixos-unstable> {
     config = config.nixpkgs.config;
   };
-  ollama = import ./ollama.nix;
-  olout = ollama {
-    nixpkgs = unstable;
-  };
 in
 {
   imports =
@@ -50,6 +46,9 @@ in
       defaultNetwork.settings.dns_enabled = true;
     };
   };
+  containers = (import ./ollama.nix {
+    nixpkgs = unstable;
+  }).containers;
 
   # Set your time zone.
   time.timeZone = "America/Chicago";
