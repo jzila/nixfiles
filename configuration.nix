@@ -8,6 +8,10 @@ let
   unstable = import <nixos-unstable> {
     config = config.nixpkgs.config;
   };
+  ollama = import ./ollama.nix;
+  olout = ollama {
+    nixpkgs = unstable;
+  };
 in
 {
   imports =
