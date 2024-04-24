@@ -67,6 +67,7 @@ in
 
   # Enable the X11 windowing system.
   services.xserver.enable = true;
+  services.xserver.videoDrivers = [ "amdgpu" ];
 
   # Enable the KDE Plasma Desktop Environment.
   services.xserver.displayManager.sddm.enable = true;
@@ -84,6 +85,16 @@ in
   # Enable bluetooth
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
+
+  # Enable OpenGL/ROCm
+  hardware.opengl.enable = true;
+  hardware.opengl.extraPackages = [
+    unstable.amdvlk
+    pkgs.rocmPackages.clr.icd
+  ];
+  hardware.opengl.extraPackages32 = [
+    unstable.driversi686Linux.amdvlk
+  ];
 
   # Enable sound with pipewire.
   sound.enable = true;

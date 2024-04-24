@@ -83,6 +83,7 @@ in
     unstable.nodejs_20
     unstable.bun
     unstable.earthly
+    unstable.ollama
   ];
 }
 
