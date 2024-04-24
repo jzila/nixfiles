@@ -10,6 +10,7 @@
 , ...
 }:
 {
+  nixpkgs.config.rocmSupport = true;
   containers.ollama = {
     inherit nixpkgs autoStart;
     privateNetwork = false;
