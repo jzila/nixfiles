@@ -3,7 +3,7 @@
 {
   nixpkgs ? <nixos-unstable>  # pass a nixpkgs that includes rocmPackages_6, e.g. unstable
 , containerHostAddr ? "192.168.1.33"
-, containerGuestAddr ? "192.168.1.133"
+, containerGuestAddr ? "192.168.1.111"
 , autoStart ? true
 , devices ? [ "/dev/dri/card0" "/dev/dri/renderD128" ]
 , port ? 11434
@@ -12,7 +12,7 @@
 {
   containers.ollama = {
     inherit nixpkgs autoStart;
-    privateNetwork = true;
+    privateNetwork = false;
     hostAddress = containerHostAddr;
     localAddress = containerGuestAddr;
     allowedDevices = let
@@ -26,7 +26,7 @@
           acceleration = "rocm";
           rocmPackages = pkgs.rocmPackages_6;
         };
-        listenAddress = "0.0.0.0:${toString port}";
+        listenAddress = "${containerHostAddr}:${toString port}";
       };
       system.stateVersion = "24.05";
     };
