@@ -7,6 +7,9 @@
       "Alacritty.desktop"."_launch" = [ ];
       "KDE Keyboard Layout Switcher"."Switch to Next Keyboard Layout" = "Meta+Alt+K";
       "alacritty.desktop"."_launch" = "Meta+Shift+T";
+      "google-chrome.desktop"."_launch" = "Meta+C";
+      "google-chrome.desktop"."new-private-window" = "Meta+Shift+C";
+      "google-chrome.desktop"."new-window" = [ ];
       "kaccess"."Toggle Screen Reader On and Off" = "Meta+Alt+S";
       "kcm_touchpad"."Disable Touchpad" = "Touchpad Off";
       "kcm_touchpad"."Enable Touchpad" = "Touchpad On";
@@ -106,7 +109,7 @@
       "kwin"."Window Above Other Windows" = [ ];
       "kwin"."Window Below Other Windows" = [ ];
       "kwin"."Window Close" = "Alt+F4";
-      "kwin"."Window Fullscreen" = [ ];
+      "kwin"."Window Fullscreen" = "Meta+Ctrl+F";
       "kwin"."Window Grow Horizontal" = [ ];
       "kwin"."Window Grow Vertical" = [ ];
       "kwin"."Window Lower" = [ ];
@@ -198,7 +201,7 @@
       "org.kde.spectacle.desktop"."CurrentMonitorScreenShot" = [ ];
       "org.kde.spectacle.desktop"."FullScreenScreenShot" = "Shift+Print";
       "org.kde.spectacle.desktop"."OpenWithoutScreenshot" = [ ];
-      "org.kde.spectacle.desktop"."RectangularRegionScreenShot" = "Meta+Shift+Print";
+      "org.kde.spectacle.desktop"."RectangularRegionScreenShot" = ["Meta+Shift+Print" "Meta+Shift+S"];
       "org.kde.spectacle.desktop"."WindowUnderCursorScreenShot" = "Meta+Ctrl+Print";
       "org.kde.spectacle.desktop"."_launch" = "Print";
       "org_kde_powerdevil"."Decrease Keyboard Brightness" = "Keyboard Brightness Down";
@@ -258,7 +261,9 @@
       "kded5rc"."Module-browserintegrationreminder"."autoload".value = false;
       "kded5rc"."Module-device_automounter"."autoload".value = false;
       "kded5rc"."PlasmaBrowserIntegration"."shownCount".value = 4;
+      "kdeglobals"."General"."AllowKDEAppsToRememberWindowPositions".value = true;
       "kdeglobals"."General"."BrowserApplication".value = "google-chrome.desktop";
+      "kdeglobals"."KDE"."SingleClick".value = true;
       "kdeglobals"."KFileDialog Settings"."Allow Expansion".value = false;
       "kdeglobals"."KFileDialog Settings"."Automatically select filename extension".value = true;
       "kdeglobals"."KFileDialog Settings"."Breadcrumb Navigation".value = true;
@@ -290,6 +295,7 @@
       "kglobalshortcutsrc"."Alacritty.desktop"."_k_friendly_name".value = "Alacritty";
       "kglobalshortcutsrc"."KDE Keyboard Layout Switcher"."_k_friendly_name".value = "Keyboard Layout Switcher";
       "kglobalshortcutsrc"."alacritty.desktop"."_k_friendly_name".value = "alacritty --command=zsh";
+      "kglobalshortcutsrc"."google-chrome.desktop"."_k_friendly_name".value = "Google Chrome";
       "kglobalshortcutsrc"."kaccess"."_k_friendly_name".value = "Accessibility";
       "kglobalshortcutsrc"."kcm_touchpad"."_k_friendly_name".value = "Touchpad";
       "kglobalshortcutsrc"."kded5"."_k_friendly_name".value = "KDE Daemon";
@@ -579,7 +585,7 @@
       "khotkeysrc"."Data_3Conditions0"."Type".value = "ACTIVE_WINDOW";
       "khotkeysrc"."Data_3Conditions0Window"."Comment".value = "Konqueror";
       "khotkeysrc"."Data_3Conditions0Window"."WindowsCount".value = 1;
-      "khotkeysrc"."Data_3Conditions0Window0"."Class".value = "^konqueror\s";
+      "khotkeysrc"."Data_3Conditions0Window0"."Class".value = "^konquerors";
       "khotkeysrc"."Data_3Conditions0Window0"."ClassType".value = 3;
       "khotkeysrc"."Data_3Conditions0Window0"."Comment".value = "Konqueror";
       "khotkeysrc"."Data_3Conditions0Window0"."Role".value = "konqueror-mainwindow#1";
@@ -788,6 +794,7 @@
       "khotkeysrc"."Data_3_9Triggers"."TriggersCount".value = 1;
       "khotkeysrc"."Data_3_9Triggers0"."GesturePointData".value = "0,0.0625,-0.5,0.5,1,0.0625,0.0625,-0.5,0.5,0.875,0.125,0.0625,-0.5,0.5,0.75,0.1875,0.0625,-0.5,0.5,0.625,0.25,0.0625,-0.5,0.5,0.5,0.3125,0.0625,-0.5,0.5,0.375,0.375,0.0625,-0.5,0.5,0.25,0.4375,0.0625,-0.5,0.5,0.125,0.5,0.0625,0.5,0.5,0,0.5625,0.0625,0.5,0.5,0.125,0.625,0.0625,0.5,0.5,0.25,0.6875,0.0625,0.5,0.5,0.375,0.75,0.0625,0.5,0.5,0.5,0.8125,0.0625,0.5,0.5,0.625,0.875,0.0625,0.5,0.5,0.75,0.9375,0.0625,0.5,0.5,0.875,1,0,0,0.5,1";
       "khotkeysrc"."Data_3_9Triggers0"."Type".value = "GESTURE";
+      "khotkeysrc"."General"."AllowKDEAppsToRememberWindowPositions[$d]".value = "";
       "khotkeysrc"."General"."BrowserApplication[$d]".value = "";
       "khotkeysrc"."General"."ColorSchemeHash[$d]".value = "";
       "khotkeysrc"."General"."ColorScheme[$d]".value = "";
@@ -797,6 +804,7 @@
       "khotkeysrc"."GesturesExclude"."Comment".value = "";
       "khotkeysrc"."GesturesExclude"."WindowsCount".value = 0;
       "khotkeysrc"."Icons"."Theme[$d]".value = "";
+      "khotkeysrc"."KDE"."SingleClick[$d]".value = "";
       "khotkeysrc"."KDE"."widgetStyle[$d]".value = "";
       "khotkeysrc"."KFileDialog Settings"."Allow Expansion[$d]".value = "";
       "khotkeysrc"."KFileDialog Settings"."Automatically select filename extension[$d]".value = "";
@@ -827,6 +835,9 @@
       "khotkeysrc"."WM"."inactiveBackground[$d]".value = "";
       "khotkeysrc"."WM"."inactiveBlend[$d]".value = "";
       "khotkeysrc"."WM"."inactiveForeground[$d]".value = "";
+      "klipperrc"."General"."IgnoreImages".value = false;
+      "klipperrc"."General"."KeepClipboardContents".value = false;
+      "klipperrc"."General"."MaxClipItems".value = 1;
       "kwalletrc"."Wallet"."First Use".value = false;
       "kwinrc"."Desktops"."Id_1".value = "21431d7b-643a-4012-b3c2-19188db0bd5b";
       "kwinrc"."Desktops"."Id_2".value = "60475ec7-fc04-4ad0-b288-23ae728705b7";
@@ -840,11 +851,14 @@
       "kwinrc"."Tiling/5f6a84cd-6e21-5fdd-9aa0-bfbda6aee800"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
       "kwinrc"."Tiling/600c622c-e89e-5d5e-b4fa-d8a445bcf9bc"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
       "kwinrc"."Tiling/993302cd-6261-5ff9-91ad-061b3d93c33e"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
+      "kwinrc"."Tiling/ba52937e-14bc-5d61-b746-7c20280c2308"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
+      "kwinrc"."Tiling/d353be47-2d49-5c7a-9b0c-2a2b95dec5d3"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
       "kwinrc"."Tiling/de0db51d-395a-50b2-95f3-a3d432bb4038"."tiles".value = "{\"layoutDirection\":\"horizontal\",\"tiles\":[{\"width\":0.25},{\"width\":0.5},{\"width\":0.25}]}";
       "kwinrc"."Windows"."FocusPolicy".value = "FocusFollowsMouse";
       "kwinrc"."Windows"."FocusStealingPreventionLevel".value = 2;
       "kwinrc"."Windows"."RollOverDesktops".value = true;
       "plasma-localerc"."Formats"."LANG".value = "en_US.UTF-8";
+      "plasmarc"."Theme"."name".value = "breeze-dark";
     };
   };
 }
