@@ -47,7 +47,6 @@ in
     };
   };
   containers = (import ./ollama.nix {
-    nixpkgs = unstable;
   }).containers;
 
   # Set your time zone.

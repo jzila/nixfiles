@@ -1,7 +1,7 @@
 # Ollama in a container with ROCm support. Set OLLAMA_HOST=addr:port when
 # running ollama outside the container to talk to the container instance.
 {
-  nixpkgs   # pass a nixpkgs that includes rocmPackages_6, e.g. unstable
+  nixpkgs ? <nixos-unstable>  # pass a nixpkgs that includes rocmPackages_6, e.g. unstable
 , containerHostAddr ? "192.168.1.33"
 , containerGuestAddr ? "192.168.1.133"
 , autoStart ? true
