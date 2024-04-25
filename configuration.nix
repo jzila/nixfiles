@@ -8,6 +8,13 @@ let
   unstable = import <nixos-unstable> {
     config = config.nixpkgs.config;
   };
+  unstable-ollama = import (builtins.fetchTarball {
+    name = "nixos-unstable-rocm";
+    url = "https://github.com/nixos/nixpkgs/archive/f173d0881eff3b21ebb29a2ef8bedbc106c86ea5.tar.gz";
+    sha256 = "1g8wq4bfq9y1h2qch8nac31sas3lgrbxra7lcc5hj9jgyrzjsm3y";
+  }) {
+    config = config.nixpkgs.config;
+  };
 in
 {
   imports =
@@ -52,6 +59,8 @@ in
     };
   };
   containers = (import ./ollama.nix {
+    nixpkgs = unstable-ollama.path;
+    lib = unstable-ollama.lib;
   }).containers;
 
   # Set your time zone.
