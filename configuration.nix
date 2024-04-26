@@ -182,6 +182,9 @@ in
     podman-compose
     # build utils
     nix-prefetch-scripts
+    cmake
+    gnumake
+    gcc
   ] ++ [
     unstable.zsa-udev-rules
   ];

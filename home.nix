@@ -84,6 +84,7 @@ in
     unstable.bun
     unstable.earthly
     unstable.ollama
+    unstable.go
   ];
 }
 
