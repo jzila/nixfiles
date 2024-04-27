@@ -33,6 +33,9 @@ in
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.extraModprobeConfig = ''
+    options amdgpu cwsr_enable=0
+  '';
 
   # Configure network proxy if necessary
 
