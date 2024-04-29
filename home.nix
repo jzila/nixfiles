@@ -5,7 +5,7 @@ let
   unstable = import <nixos-unstable> {
     config = config.nixpkgs.config;
   };
-  vscode-extensions = 
+  vscode-extensions =
     (import (builtins.fetchGit {
       url = "https://github.com/nix-community/nix-vscode-extensions";
       ref = "refs/heads/master";
@@ -69,6 +69,7 @@ in
   };
   programs.vscode = {
     enable = true;
+    package = unstable.vscode;
     extensions = with vscode-extensions.vscode-marketplace; [
       pkgs.vscode-extensions.github.copilot
     ] ++ [
@@ -87,4 +88,3 @@ in
     unstable.go
   ];
 }
-
