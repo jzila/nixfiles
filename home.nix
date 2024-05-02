@@ -93,5 +93,6 @@ in
     unstable.earthly
     unstable.ollama
     unstable.go
+    unstable.lazygit
   ];
 }
