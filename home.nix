@@ -24,6 +24,9 @@ in
   programs.home-manager.enable = true;
   nixpkgs.config.allowUnfree = true;
 
+  # fonts
+  fonts.fontconfig.enable = true;
+
   programs.zsh = {
     enable    = true;
     history = {
@@ -79,6 +82,10 @@ in
   };
   home.packages = [
     pkgs.just
+    pkgs.lunarvim
+    pkgs.kitty
+    pkgs.kitty-themes
+    (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; })
   ] ++ [
     unstable.python3Full
     unstable.nodejs_20
