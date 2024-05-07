@@ -190,6 +190,7 @@ in
     gcc
   ] ++ [
     unstable.zsa-udev-rules
+    unstable.devenv
   ];
 
   users.defaultUserShell = pkgs.zsh;
