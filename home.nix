@@ -90,6 +90,7 @@ in
     unstable.python3Full
     unstable.nodejs_20
     unstable.bun
+    unstable.yarn
     unstable.earthly
     unstable.ollama
     unstable.go
