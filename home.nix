@@ -23,6 +23,7 @@ in
   # home-manager should manage itself and allow unfree packages.
   programs.home-manager.enable = true;
   nixpkgs.config.allowUnfree = true;
+  programs.direnv.enable = true;
 
   # fonts
   fonts.fontconfig.enable = true;

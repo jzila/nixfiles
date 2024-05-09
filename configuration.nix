@@ -240,6 +240,10 @@ in
     };
   };
 
+  services.udev = {
+    packages = [ unstable.zsa-udev-rules ];
+  };
+
   # Enable the OpenSSH daemon.
   # services.openssh.enable = true;
 
