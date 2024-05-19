@@ -33,6 +33,7 @@ in
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.grub.memtest86.enable = true;
   boot.extraModprobeConfig = ''
     options amdgpu cwsr_enable=0
   '';
@@ -61,10 +62,10 @@ in
       defaultNetwork.settings.dns_enabled = true;
     };
   };
-  containers = (import ./ollama.nix {
-    nixpkgs = unstable-ollama.path;
-    lib = unstable-ollama.lib;
-  }).containers;
+  # containers = (import ./ollama.nix {
+  #   nixpkgs = unstable-ollama.path;
+  #   lib = unstable-ollama.lib;
+  # }).containers;
 
   # Set your time zone.
   time.timeZone = "America/Chicago";
@@ -178,6 +179,7 @@ in
     curl
     git
     htop
+    dig
     home-manager
     # container utils
     podman-tui

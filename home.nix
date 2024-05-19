@@ -87,6 +87,7 @@ in
     pkgs.kitty
     pkgs.kitty-themes
     (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; })
+    pkgs.jq
   ] ++ [
     unstable.python3Full
     unstable.nodejs_20

@@ -3,8 +3,7 @@
 {
   nixpkgs # pass a nixpkgs that includes rocmPackages_6, e.g. unstable
 , lib
-, containerHostAddr ? "192.168.1.178"
-, containerGuestAddr ? "192.168.1.111"
+, containerHostAddr ? "127.0.0.1"
 , autoStart ? true
 , devices ? [
     "/dev/kfd"
@@ -19,7 +18,6 @@
     inherit nixpkgs autoStart;
     privateNetwork = false;
     hostAddress = containerHostAddr;
-    localAddress = containerGuestAddr;
     allowedDevices = let
       deviceDescr = node: { inherit node; modifier = "rw"; };
     in map deviceDescr devices;
