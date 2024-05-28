@@ -34,6 +34,7 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.memtest86.enable = true;
+  boot.loader.systemd-boot.memtest86.enable = true;
   boot.extraModprobeConfig = ''
     options amdgpu cwsr_enable=0
   '';
