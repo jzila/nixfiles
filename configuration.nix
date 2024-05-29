@@ -31,6 +31,7 @@ in
 
   # Bootloader.
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelParams = [ "memmap=4G$21G" ];
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.grub.memtest86.enable = true;
