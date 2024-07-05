@@ -97,5 +97,6 @@ in
     unstable.ollama
     unstable.go
     unstable.lazygit
+    unstable.signal-desktop
   ];
 }
