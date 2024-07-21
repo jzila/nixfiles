@@ -92,17 +92,24 @@ in
   services.xserver.videoDrivers = [ "amdgpu" ];
 
   # Enable the KDE Plasma Desktop Environment.
-  services.xserver.displayManager.sddm.enable = true;
+  services.displayManager.sddm.enable = true;
   services.xserver.desktopManager.plasma5.enable = true;
 
   # Configure keymap in X11
-  services.xserver = {
+  services.xserver.xkb = {
+    variant = "";
     layout = "us";
-    xkbVariant = "";
   };
 
-  # Enable CUPS to print documents.
+  # Enable CUPS to print documents, and SANE to scan them.
   services.printing.enable = true;
+  hardware.sane.enable = true;
+
+  # Enable Avahi (mDNS/DNS-SD) for the local network discovery services.
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+  };
 
   # Enable bluetooth
   hardware.bluetooth.enable = true;
@@ -158,7 +165,7 @@ in
   users.users.john = {
     isNormalUser = true;
     description = "John Zila";
-    extraGroups = [ "networkmanager" "wheel" "plugdev" ];
+    extraGroups = [ "networkmanager" "wheel" "plugdev" "scanner" "lp" ];
     packages = with pkgs; [
       firefox
       google-chrome

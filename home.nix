@@ -88,6 +88,7 @@ in
     pkgs.kitty-themes
     (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; })
     pkgs.jq
+    pkgs.kdePackages.skanpage
   ] ++ [
     unstable.python3Full
     unstable.nodejs_20
@@ -98,5 +99,6 @@ in
     unstable.go
     unstable.lazygit
     unstable.signal-desktop
+    unstable.zed-editor
   ];
 }
