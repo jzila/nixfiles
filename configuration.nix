@@ -84,7 +84,8 @@ in
   # }).containers;
 
   # Set your time zone.
-  time.timeZone = "America/Chicago";
+  # time.timeZone = "America/Chicago";
+  services.automatic-timezoned.enable = true;
 
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
@@ -187,7 +188,14 @@ in
   users.users.john = {
     isNormalUser = true;
     description = "John Zila";
-    extraGroups = [ "networkmanager" "wheel" "plugdev" "scanner" "lp" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "plugdev"
+      "scanner"
+      "lp"
+      "dialout"
+    ];
     packages = with pkgs; [
       firefox
       google-chrome
@@ -239,7 +247,7 @@ in
   nix.gc = {
     automatic = true;
     dates = "Tue *-*-* 03:15:00";
-    options = "--delete-older-than 30d";
+    options = "--delete-older-than 14d";
   };
 
   # Some programs need SUID wrappers, can be configured further or are
