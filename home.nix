@@ -83,22 +83,29 @@ in
   };
   home.packages = [
     pkgs.just
-    pkgs.lunarvim
     pkgs.kitty
     pkgs.kitty-themes
     (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; })
     pkgs.jq
+    pkgs.fzf
     pkgs.kdePackages.skanpage
+    pkgs.gpu-screen-recorder
+    pkgs.gpu-screen-recorder-gtk
+    pkgs.vlc
   ] ++ [
     unstable.python3Full
-    unstable.nodejs_20
+    unstable.nodejs_22
     unstable.bun
     unstable.yarn
     unstable.earthly
     unstable.ollama
     unstable.go
     unstable.lazygit
+    unstable.delta
     unstable.signal-desktop
     unstable.zed-editor
+    unstable.gh
+    unstable.neovim
+    unstable.lunarvim
   ];
 }

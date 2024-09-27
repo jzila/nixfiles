@@ -30,15 +30,27 @@ in
   nixpkgs.config.rocmSupport = true;
 
   # Bootloader.
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelParams = [ "memmap=4G$21G" ];
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.grub.memtest86.enable = true;
-  boot.loader.systemd-boot.memtest86.enable = true;
-  boot.extraModprobeConfig = ''
-    options amdgpu cwsr_enable=0
-  '';
+  boot = {
+    kernelPackages = pkgs.linuxPackages_latest;
+    kernelParams = [ "memmap=4G$21G" ];
+    extraModprobeConfig = ''
+      options amdgpu cwsr_enable=0
+    '';
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+      grub.memtest86.enable = true;
+      systemd-boot.memtest86.enable = true;
+    };
+    binfmt.registrations.appimage = {
+      wrapInterpreterInShell = false;
+      interpreter = "${pkgs.appimage-run}/bin/appimage-run";
+      recognitionType = "magic";
+      offset = 0;
+      mask = ''\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff'';
+      magicOrExtension = ''\x7fELF....AI\x02'';
+    };
+  };
 
   # Configure network proxy if necessary
 
@@ -57,6 +69,10 @@ in
         3001
       ];
     };
+
+    extraHosts = ''
+      127.0.0.1 manuscripts.localhost
+    '';
     # Open ports in the firewall.
     # networking.firewall.allowedTCPPorts = [ ... ];
     # networking.firewall.allowedUDPPorts = [ ... ];
@@ -107,8 +123,15 @@ in
   services.xserver.videoDrivers = [ "amdgpu" ];
 
   # Enable the KDE Plasma Desktop Environment.
-  services.displayManager.sddm.enable = true;
+  services.displayManager.sddm = {
+    enable = true;
+    wayland = {
+      enable = true;
+      compositor = "kwin";
+    };
+  };
   services.xserver.desktopManager.plasma5.enable = true;
+  services.hardware.bolt.enable = true;
 
   # Configure keymap in X11
   services.xserver.xkb = {
@@ -167,8 +190,16 @@ in
   # Security configurations.
   security = {
     rtkit.enable = true;
-    pam.services = {
-      sudo.u2fAuth = true;
+    pam = {
+      services = {
+        sudo.u2fAuth = true;
+      };
+      loginLimits = [{
+        domain = "*";
+        type = "soft";
+        item = "nofile";
+        value = "4096";
+      }];
     };
     sudo = {
       enable = true;
@@ -220,6 +251,7 @@ in
     htop
     dig
     home-manager
+    appimage-run
     # container utils
     podman-tui
     dive
@@ -229,6 +261,8 @@ in
     cmake
     gnumake
     gcc
+    # UI utils
+    kdePackages.plasma-thunderbolt
   ] ++ [
     unstable.zsa-udev-rules
     unstable.devenv
