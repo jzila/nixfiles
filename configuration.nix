@@ -230,7 +230,6 @@ in
     ];
     packages = with pkgs; [
       firefox
-      google-chrome
       bitwarden
       yubioath-flutter
       alacritty
