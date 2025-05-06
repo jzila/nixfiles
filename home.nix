@@ -107,5 +107,6 @@ in
     unstable.gh
     unstable.neovim
     unstable.lunarvim
+    unstable.galaxy-buds-client
   ];
 }

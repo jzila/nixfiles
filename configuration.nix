@@ -160,6 +160,7 @@ in
   # Enable bluetooth
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
+  services.blueman.enable = true;
 
   # Enable OpenGL/ROCm
   hardware.opengl.enable = true;
@@ -261,6 +262,7 @@ in
     cmake
     gnumake
     gcc
+    libgcc
     # UI utils
     kdePackages.plasma-thunderbolt
   ] ++ [
@@ -317,6 +319,14 @@ in
 
   services.udev = {
     packages = [ unstable.zsa-udev-rules ];
+  };
+
+  services.tailscale = {
+    enable = true;
+    useRoutingFeatures = "client";
+    extraUpFlags = [
+      "--operator=john"
+    ];
   };
 
   # Enable the OpenSSH daemon.
