@@ -32,7 +32,7 @@ in
   # Bootloader.
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
-    kernelParams = [ "memmap=4G$21G" ];
+    kernelParams = [];
     extraModprobeConfig = ''
       options amdgpu cwsr_enable=0
     '';
