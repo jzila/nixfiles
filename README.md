@@ -37,3 +37,37 @@ nix flake update
 ```
 nix build .#nixosConfigurations.asus-iso.config.system.build.isoImage
 ```
+
+## Home Manager
+
+### Updating Home Manager
+
+With the migration to flakes, Home Manager is now integrated directly into the NixOS configuration. This means:
+
+1. Home Manager configuration is applied automatically when you rebuild the system
+2. No separate Home Manager commands are needed
+
+```
+# This single command updates both NixOS and Home Manager configurations
+sudo nixos-rebuild switch --flake .#venator
+```
+
+### Migration from non-flakes to flakes
+
+If you're migrating from a non-flakes setup to this flakes-based configuration:
+
+1. Previous separate commands (non-flakes):
+   ```bash
+   # System configuration
+   sudo nixos-rebuild switch
+   
+   # Home Manager configuration
+   home-manager switch
+   ```
+
+2. New unified command (flakes):
+   ```bash
+   sudo nixos-rebuild switch --flake .#venator
+   ```
+
+The Home Manager configuration is now defined in `home/john/home.nix` and referenced in the `flake.nix` file. All Home Manager settings are applied as part of the system rebuild, eliminating the need for separate commands.
