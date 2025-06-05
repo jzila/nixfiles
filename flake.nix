@@ -2,12 +2,12 @@
   description = "John's NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
-      url = "github:nix-community/home-manager/release-23.11";
+      url = "github:nix-community/home-manager/release-24.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
@@ -16,11 +16,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    plasma-manager = {
+      url = "github:pjones/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
     # Special version needed for ollama
     nixpkgs-ollama.url = "github:nixos/nixpkgs/f173d0881eff3b21ebb29a2ef8bedbc106c86ea5";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-hardware, home-manager, nix-vscode-extensions, nixpkgs-ollama, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-hardware, home-manager, nix-vscode-extensions, plasma-manager, nixpkgs-ollama, ... }@inputs:
     let
       system = "x86_64-linux";
       
@@ -44,39 +50,39 @@
       };
 
       lib = nixpkgs.lib;
+
+      # Common specialArgs for all hosts
+      commonSpecialArgs = {
+        inherit pkgs-unstable pkgs-ollama nix-vscode-extensions nixos-hardware;
+      };
+
+      # Common Home Manager configuration
+      homeManagerModule = {
+        imports = [ home-manager.nixosModules.home-manager ];
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+        home-manager.extraSpecialArgs = { 
+          inherit pkgs-unstable nix-vscode-extensions plasma-manager system;
+        };
+        home-manager.users.john = import ./home/john/home.nix;
+      };
+
+      # Dynamic host loading helper
+      mkHost = hostPath: extraModules: lib.nixosSystem {
+        inherit system;
+        specialArgs = commonSpecialArgs;
+        modules = [
+          hostPath
+        ] ++ extraModules;
+      };
+
     in {
       nixosConfigurations = {
-        # Main system configuration
-        venator = lib.nixosSystem {
-          inherit system;
-          specialArgs = { 
-            inherit pkgs-unstable pkgs-ollama nix-vscode-extensions nixos-hardware;
-          };
-          modules = [
-            ./hosts/venator/configuration.nix
-            
-            # Home Manager module
-            home-manager.nixosModules.home-manager {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.extraSpecialArgs = { 
-                inherit pkgs-unstable nix-vscode-extensions;
-              };
-              home-manager.users.john = import ./home/john/home.nix;
-            }
-          ];
-        };
+        # Main system configuration with Home Manager
+        venator = mkHost ./hosts/venator/configuration.nix [ homeManagerModule ];
         
-        # ASUS installation ISO
-        asus-iso = lib.nixosSystem {
-          inherit system;
-          specialArgs = { 
-            inherit pkgs-unstable nixos-hardware;
-          };
-          modules = [
-            ./hosts/asus-iso.nix
-          ];
-        };
+        # ASUS installation ISO (no Home Manager needed)
+        asus-iso = mkHost ./hosts/asus-iso.nix [ ];
       };
     };
 }

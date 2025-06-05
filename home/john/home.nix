@@ -1,7 +1,6 @@
-{ config, pkgs, pkgs-unstable, nix-vscode-extensions, ... }:
+{ config, pkgs, pkgs-unstable, nix-vscode-extensions, plasma-manager, system, ... }:
 
 let
-  system = builtins.currentSystem;
   vscode-extensions = nix-vscode-extensions.extensions.${system};
 in
 {
