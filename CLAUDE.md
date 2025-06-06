@@ -30,9 +30,11 @@ The system includes development tools installed via both NixOS packages and Home
 ## Architecture
 
 ### Flake Structure
-- `flake.nix` - Main flake defining inputs (nixpkgs, home-manager, hardware) and outputs
-- Two nixpkgs inputs: stable (23.11) and unstable, plus specialized ollama packages
+- `flake.nix` - Main flake defining inputs (nixpkgs, home-manager, hardware, plasma-manager) and outputs
+- Two nixpkgs inputs: stable (24.11) and unstable, plus specialized ollama packages
 - Home Manager integrated as a NixOS module, not standalone
+- Uses dynamic host loading with `mkHost` helper function for maintainable configuration
+- All flake inputs passed via `specialArgs` and `extraSpecialArgs` using `inputs` directly
 
 ### Configuration Organization
 - `hosts/venator/` - System-specific configuration for main laptop
@@ -42,9 +44,10 @@ The system includes development tools installed via both NixOS packages and Home
 
 ### Key Integration Points
 - Home Manager users defined in flake.nix via `home-manager.users.john`
-- Special args pass unstable packages and extensions to both system and home configs
-- Plasma configuration modularized in `modules/plasma/`
+- All flake inputs available to modules via `specialArgs = inputs` pattern
+- Plasma configuration modularized in `modules/plasma/` with plasma-manager integration
 - Container infrastructure with Podman configured at system level
+- TMUX configuration handled via `home.sessionVariables` instead of script files
 
 ### Hardware-Specific Features
 - AMD GPU with ROCm support enabled
@@ -58,3 +61,15 @@ The system includes development tools installed via both NixOS packages and Home
 Since Home Manager is integrated into the system flake, any changes to user packages, shell configuration, or dotfiles require a full system rebuild with `sudo nixos-rebuild switch --flake .#venator`. There are no separate `home-manager switch` commands.
 
 The configuration references external dotfiles in `/home/john/repos/dotfiles/` for Zsh and Tmux configurations.
+
+## Important Notes
+
+### NixOS Version Compatibility
+- Currently using NixOS 24.11 stable channel
+- Some options (like `sound.enable`) were removed in 24.11 - use PipeWire configuration instead
+- Hardware options like `hardware.amdgpu` require NixOS 24.05+ for nixos-hardware compatibility
+
+### Flake Management
+- Always run `nix flake update` after changing input URLs in flake.nix
+- The flake uses `@inputs` pattern to make all inputs available to modules
+- Custom package sets (pkgs-unstable, pkgs-ollama) are merged with inputs in specialArgs
