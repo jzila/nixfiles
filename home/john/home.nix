@@ -1,19 +1,12 @@
-{ config, pkgs, ... }:
+{ config, pkgs, pkgs-unstable, nix-vscode-extensions, plasma-manager, ... }:
 
 let
-  system = builtins.currentSystem;
-  unstable = import <nixos-unstable> {
-    config = config.nixpkgs.config;
-  };
-  vscode-extensions =
-    (import (builtins.fetchGit {
-      url = "https://github.com/nix-community/nix-vscode-extensions";
-      ref = "refs/heads/master";
-    })).extensions.${system};
+  system = pkgs.stdenv.hostPlatform.system;
+  vscode-extensions = nix-vscode-extensions.extensions.${system};
 in
 {
   imports = [
-    ./plasma/plasma.nix
+    ../../modules/plasma/plasma.nix
   ];
 
   home.username = "john";
@@ -73,7 +66,7 @@ in
   };
   programs.vscode = {
     enable = true;
-    package = unstable.vscode;
+    package = pkgs-unstable.vscode;
     extensions = with vscode-extensions.vscode-marketplace; [
       pkgs.vscode-extensions.github.copilot
     ] ++ [
@@ -92,22 +85,24 @@ in
     pkgs.gpu-screen-recorder
     pkgs.gpu-screen-recorder-gtk
     pkgs.vlc
+    pkgs.lmodern
   ] ++ [
-    unstable.python3Full
-    unstable.nodejs_22
-    unstable.bun
-    unstable.yarn
-    unstable.earthly
-    unstable.ollama
-    unstable.go
-    unstable.lazygit
-    unstable.delta
-    unstable.signal-desktop
-    unstable.zed-editor
-    unstable.gh
-    unstable.neovim
-    unstable.lunarvim
-    unstable.galaxy-buds-client
-    unstable.google-chrome
+    pkgs-unstable.python3Full
+    pkgs-unstable.nodejs_22
+    pkgs-unstable.bun
+    pkgs-unstable.yarn
+    pkgs-unstable.earthly
+    pkgs-unstable.ollama
+    pkgs-unstable.go
+    pkgs-unstable.lazygit
+    pkgs-unstable.delta
+    pkgs-unstable.signal-desktop
+    pkgs-unstable.zed-editor
+    pkgs-unstable.gh
+    pkgs-unstable.neovim
+    pkgs-unstable.lunarvim
+    pkgs-unstable.galaxy-buds-client
+    pkgs-unstable.google-chrome
+    pkgs-unstable.claude-code
   ];
 }
