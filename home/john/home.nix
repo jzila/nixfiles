@@ -1,6 +1,7 @@
-{ config, pkgs, pkgs-unstable, nix-vscode-extensions, plasma-manager, system, ... }:
+{ config, pkgs, pkgs-unstable, nix-vscode-extensions, plasma-manager, ... }:
 
 let
+  system = pkgs.stdenv.hostPlatform.system;
   vscode-extensions = nix-vscode-extensions.extensions.${system};
 in
 {

@@ -51,18 +51,13 @@
 
       lib = nixpkgs.lib;
 
-      # Common specialArgs for all hosts
-      commonSpecialArgs = {
-        inherit pkgs-unstable pkgs-ollama nix-vscode-extensions nixos-hardware;
-      };
-
       # Common Home Manager configuration
       homeManagerModule = {
         imports = [ home-manager.nixosModules.home-manager ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.extraSpecialArgs = { 
-          inherit pkgs-unstable nix-vscode-extensions plasma-manager system;
+        home-manager.extraSpecialArgs = inputs // {
+          inherit pkgs-unstable;
         };
         home-manager.users.john = import ./home/john/home.nix;
       };
@@ -70,7 +65,9 @@
       # Dynamic host loading helper
       mkHost = hostPath: extraModules: lib.nixosSystem {
         inherit system;
-        specialArgs = commonSpecialArgs;
+        specialArgs = inputs // {
+          inherit pkgs-unstable pkgs-ollama;
+        };
         modules = [
           hostPath
         ] ++ extraModules;
