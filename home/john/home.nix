@@ -21,6 +21,12 @@ in
   # fonts
   fonts.fontconfig.enable = true;
 
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+    vimAlias = true;
+  };
+
   programs.zsh = {
     enable    = true;
     history = {
@@ -86,6 +92,7 @@ in
     pkgs.gpu-screen-recorder-gtk
     pkgs.vlc
     pkgs.lmodern
+    pkgs.tree
   ] ++ [
     pkgs-unstable.python3Full
     pkgs-unstable.nodejs_22
@@ -99,7 +106,6 @@ in
     pkgs-unstable.signal-desktop
     pkgs-unstable.zed-editor
     pkgs-unstable.gh
-    pkgs-unstable.neovim
     pkgs-unstable.lunarvim
     pkgs-unstable.galaxy-buds-client
     pkgs-unstable.google-chrome
