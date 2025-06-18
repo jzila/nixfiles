@@ -1,3 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(nix flake metadata:*)",
+      "Bash(grep:*)"
+    ]
+  },
   "enableAllProjectMcpServers": false
 }
