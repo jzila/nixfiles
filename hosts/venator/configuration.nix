@@ -152,12 +152,12 @@
   services.blueman.enable = true;
 
   # Enable OpenGL/ROCm
-  hardware.opengl.enable = true;
-  hardware.opengl.extraPackages = [
+  hardware.graphics.enable = true;
+  hardware.graphics.extraPackages = [
     pkgs-unstable.amdvlk
     pkgs.rocmPackages.clr.icd
   ];
-  hardware.opengl.extraPackages32 = [
+  hardware.graphics.extraPackages32 = [
     pkgs-unstable.driversi686Linux.amdvlk
   ];
 
