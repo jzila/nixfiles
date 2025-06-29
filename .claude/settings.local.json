@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(nix flake metadata:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(nix flake show:*)",
+      "Bash(nix flake update:*)",
+      "WebFetch(domain:devenv.sh)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(nix flake check:*)",
+      "Bash(nix eval:*)",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": false

@@ -26,6 +26,7 @@ The system includes development tools installed via both NixOS packages and Home
 - Editors: VS Code (unstable), Zed, Neovim, LunarVim
 - Version control: Git, Lazygit, Delta, GitHub CLI
 - Containers: Podman (with Docker compatibility), Podman Compose
+- Virtualization: MicroVM.nix for isolated development environments
 
 ## Architecture
 
@@ -47,6 +48,7 @@ The system includes development tools installed via both NixOS packages and Home
 - All flake inputs available to modules via `specialArgs = inputs` pattern
 - Plasma configuration modularized in `modules/plasma/` with plasma-manager integration
 - Container infrastructure with Podman configured at system level
+- MicroVM development environments in `modules/microvm/` for isolated project work
 - TMUX configuration handled via `home.sessionVariables` instead of script files
 
 ### Hardware-Specific Features

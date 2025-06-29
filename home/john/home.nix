@@ -93,6 +93,7 @@ in
     pkgs.vlc
     pkgs.lmodern
     pkgs.tree
+    pkgs.sox
   ] ++ [
     pkgs-unstable.python3Full
     pkgs-unstable.nodejs_22
