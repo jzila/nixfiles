@@ -24,9 +24,15 @@
 
     # Special version needed for ollama
     nixpkgs-ollama.url = "github:nixos/nixpkgs/f173d0881eff3b21ebb29a2ef8bedbc106c86ea5";
+
+    # MicroVM support
+    microvm = {
+      url = "github:astro/microvm.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-hardware, home-manager, nix-vscode-extensions, plasma-manager, nixpkgs-ollama, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-hardware, home-manager, nix-vscode-extensions, plasma-manager, nixpkgs-ollama, microvm, ... }@inputs:
     let
       system = "x86_64-linux";
       
@@ -70,6 +76,7 @@
         };
         modules = [
           hostPath
+          microvm.nixosModules.host
         ] ++ extraModules;
       };
 

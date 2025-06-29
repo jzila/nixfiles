@@ -11,6 +11,10 @@
       nixos-hardware.nixosModules.asus-zephyrus-ga402
       # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      # MicroVM support - comprehensive implementation
+      ../../modules/microvm/default.nix
+      # Host-specific microVM configuration
+      ./microvm-config.nix
     ];
 
   # Allow unfree packages
