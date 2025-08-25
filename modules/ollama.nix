@@ -26,10 +26,13 @@
     };
     config = { pkgs, lib, ... }: {
       networking.firewall.allowedTCPPorts = [ port ];
+      networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
       services.ollama = {
+        package = pkgs.ollama-rocm;
         enable = true;
         acceleration = "rocm";
-        listenAddress = "${containerHostAddr}:${toString port}";
+        host = containerHostAddr;
+        port = port;
         environmentVariables = {
           HSA_OVERRIDE_GFX_VERSION = "10.3.0";
         };
