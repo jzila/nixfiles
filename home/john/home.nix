@@ -1,4 +1,4 @@
-{ config, pkgs, pkgs-unstable, nix-vscode-extensions, plasma-manager, ... }:
+{ config, pkgs, pkgs-unstable, nix-vscode-extensions, codex, wifitui, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -36,7 +36,7 @@ in
     enableCompletion = true;
     syntaxHighlighting.enable = true;
     historySubstringSearch.enable = true;
-    initExtra = ''
+    initContent = ''
       ZSH_AUTOSUGGEST_STRATEGY=(history)
 
       . /home/john/repos/dotfiles/zshrc
@@ -80,11 +80,14 @@ in
       bradlc.vscode-tailwindcss
     ];
   };
+  home.sessionVariables = {
+    OLLAMA_HOST = "127.0.0.1:11434";
+  };
   home.packages = [
     pkgs.just
     pkgs.kitty
     pkgs.kitty-themes
-    (pkgs.nerdfonts.override { fonts = [ "FiraCode" ]; })
+    pkgs.nerd-fonts.fira-code
     pkgs.jq
     pkgs.fzf
     pkgs.kdePackages.skanpage
@@ -93,6 +96,7 @@ in
     pkgs.vlc
     pkgs.lmodern
     pkgs.tree
+    pkgs.ripgrep
   ] ++ [
     pkgs-unstable.python3Full
     pkgs-unstable.nodejs_22
@@ -110,5 +114,8 @@ in
     pkgs-unstable.galaxy-buds-client
     pkgs-unstable.google-chrome
     pkgs-unstable.claude-code
+    pkgs-unstable.gemini-cli
+    codex.packages.${system}.codex-rs
+    wifitui.packages.${system}.default
   ];
 }
