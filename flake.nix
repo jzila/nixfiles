@@ -2,12 +2,12 @@
   description = "John's NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
+      url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
@@ -22,28 +22,29 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    # Special version needed for ollama
-    nixpkgs-ollama.url = "github:nixos/nixpkgs/f173d0881eff3b21ebb29a2ef8bedbc106c86ea5";
+    codex = {
+      url = "github:openai/codex/b3f958c24e4c4350c06220bbafd9982de13e3acb";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    wifitui = {
+      url = "github:shazow/wifitui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nixos-hardware, home-manager, nix-vscode-extensions, plasma-manager, nixpkgs-ollama, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }@inputs:
     let
       system = "x86_64-linux";
       
       # Configure pkgs instances
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        config.rocmSupport = true;
-      };
-
       pkgs-unstable = import nixpkgs-unstable {
         inherit system;
         config.allowUnfree = true;
         config.rocmSupport = true;
       };
 
-      pkgs-ollama = import nixpkgs-ollama {
+      pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         config.rocmSupport = true;
@@ -66,7 +67,7 @@
       mkHost = hostPath: extraModules: lib.nixosSystem {
         inherit system;
         specialArgs = inputs // {
-          inherit pkgs-unstable pkgs-ollama;
+          inherit pkgs-unstable;
         };
         modules = [
           hostPath
