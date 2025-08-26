@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running 'nixos-help').
 
-{ config, pkgs, pkgs-unstable, pkgs-ollama, lib, nixos-hardware, ... }:
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, ... }:
 
 {
   imports =
@@ -82,11 +82,15 @@
       defaultNetwork.settings.dns_enabled = true;
     };
   };
-  # Uncomment to enable ollama containers
-  # containers = (import ../../modules/ollama.nix {
-  #   nixpkgs = pkgs-ollama.outPath;
-  #   lib = pkgs-ollama.lib;
-  # }).containers;
+
+  containers = (import ../../modules/ollama.nix {
+    inherit nixpkgs lib;
+    devices = [
+      "/dev/kfd"
+      "/dev/dri/card1"      # Discrete GPU (RX 6650 XT/6700S/6800S)
+      "/dev/dri/renderD128" # Discrete GPU render node
+    ];
+  }).containers;
 
   # Set your time zone.
   # time.timeZone = "America/Chicago";
@@ -119,7 +123,7 @@
       compositor = "kwin";
     };
   };
-  services.xserver.desktopManager.plasma5.enable = true;
+  services.desktopManager.plasma6.enable = true;
   services.hardware.bolt.enable = true;
 
   # Configure keymap in X11
@@ -162,7 +166,7 @@
   ];
 
   # Enable sound with pipewire.
-  hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   services.pipewire = {
     enable = true;
     alsa.enable = true;
@@ -198,8 +202,13 @@
     };
   };
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
+  services.keybase.enable = true;
+  services.kbfs = {
+    enable = true;
+    enableRedirector = true;
+  };
+  security.wrappers.keybase-redirector.owner = "john";
+  security.wrappers.keybase-redirector.group = "users";
 
   # Extra groups
   users.groups.plugdev = {};
@@ -252,6 +261,7 @@
     libgcc
     # UI utils
     kdePackages.plasma-thunderbolt
+    keybase-gui
   ] ++ [
     pkgs-unstable.zsa-udev-rules
     pkgs-unstable.devenv
