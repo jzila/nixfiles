@@ -123,7 +123,7 @@
       compositor = "kwin";
     };
   };
-  services.xserver.desktopManager.plasma5.enable = true;
+  services.desktopManager.plasma6.enable = true;
   services.hardware.bolt.enable = true;
 
   # Configure keymap in X11
@@ -166,7 +166,7 @@
   ];
 
   # Enable sound with pipewire.
-  hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   services.pipewire = {
     enable = true;
     alsa.enable = true;

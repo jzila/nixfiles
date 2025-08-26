@@ -13,9 +13,8 @@ in
   home.homeDirectory = "/home/john";
   home.stateVersion = "23.11";
 
-  # home-manager should manage itself and allow unfree packages.
+  # home-manager should manage itself.
   programs.home-manager.enable = true;
-  nixpkgs.config.allowUnfree = true;
   programs.direnv.enable = true;
 
   # fonts
@@ -73,7 +72,7 @@ in
   programs.vscode = {
     enable = true;
     package = pkgs-unstable.vscode;
-    extensions = with vscode-extensions.vscode-marketplace; [
+    profiles.default.extensions = with vscode-extensions.vscode-marketplace; [
       pkgs.vscode-extensions.github.copilot
     ] ++ [
       ms-vscode.vscode-typescript-next
