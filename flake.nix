@@ -82,6 +82,9 @@
         # Framework Desktop configuration with Home Manager
         argo = mkHost ./hosts/argo/configuration.nix [ homeManagerModule ];
         
+        # Framework Desktop netboot installer (no Home Manager needed)
+        argo-netboot = mkHost ./hosts/argo/netboot.nix [ ];
+        
         # ASUS installation ISO (no Home Manager needed)
         asus-iso = mkHost ./hosts/asus-iso.nix [ ];
       };

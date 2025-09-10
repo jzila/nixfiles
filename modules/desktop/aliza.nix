@@ -2,6 +2,10 @@
 { config, pkgs, pkgs-unstable, lib, ... }:
 
 {
+  imports = [
+    ../ssh-ca
+  ];
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
@@ -111,6 +115,7 @@
   services.tailscale = {
     enable = true;
     useRoutingFeatures = "client";
+    package = pkgs-unstable.tailscale;
   };
 
   # Networking

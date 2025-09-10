@@ -96,6 +96,7 @@ in
     pkgs.lmodern
     pkgs.tree
     pkgs.ripgrep
+    pkgs.openssl
   ] ++ [
     pkgs-unstable.python3Full
     pkgs-unstable.nodejs_22
@@ -114,6 +115,7 @@ in
     pkgs-unstable.google-chrome
     pkgs-unstable.claude-code
     pkgs-unstable.gemini-cli
+    pkgs-unstable.step-cli
     codex.packages.${system}.codex-rs
     wifitui.packages.${system}.default
   ];
