@@ -79,6 +79,9 @@
         # Main system configuration with Home Manager
         venator = mkHost ./hosts/venator/configuration.nix [ homeManagerModule ];
         
+        # Framework Desktop configuration with Home Manager
+        argo = mkHost ./hosts/argo/configuration.nix [ homeManagerModule ];
+        
         # ASUS installation ISO (no Home Manager needed)
         asus-iso = mkHost ./hosts/asus-iso.nix [ ];
       };
