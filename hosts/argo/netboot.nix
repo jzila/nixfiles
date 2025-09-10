@@ -6,7 +6,7 @@
     # Framework Desktop hardware support for netboot
     nixos-hardware.nixosModules.framework-amd-ai-300-series
     # Netboot base configuration
-    <nixpkgs/nixos/modules/installer/netboot/netboot-minimal.nix>
+    "${nixpkgs}/nixos/modules/installer/netboot/netboot-minimal.nix"
     # Shared desktop configuration (minimal subset for installer)
     ../../modules/desktop/aliza.nix
   ];
@@ -28,9 +28,9 @@
   ];
 
   # Override desktop services for netboot environment
-  services.xserver.enable = false;
-  services.displayManager.sddm.enable = false;
-  services.desktopManager.plasma6.enable = false;
+  services.xserver.enable = lib.mkForce false;
+  services.displayManager.sddm.enable = lib.mkForce false;
+  services.desktopManager.plasma6.enable = lib.mkForce false;
 
   # Enable SSH for remote installation
   services.openssh = {
@@ -79,21 +79,17 @@
   ];
 
   # Network configuration for installer
-  networking.networkmanager.enable = true;
-  networking.wireless.enable = false;
+  networking.networkmanager.enable = lib.mkForce true;
+  networking.wireless.enable = lib.mkForce false;
 
   # Enable DHCP for netboot
-  networking.useDHCP = true;
+  networking.useDHCP = lib.mkForce true;
 
-  # Disable unneeded services for netboot
+  # Disable unneeded services for netboot (only disable services that exist in minimal)
   services.avahi.enable = lib.mkForce false;
-  services.bluetooth.enable = lib.mkForce false;
   services.printing.enable = lib.mkForce false;
-  services.tailscale.enable = lib.mkForce false;
   services.keybase.enable = lib.mkForce false;
   services.kbfs.enable = lib.mkForce false;
-  virtualisation.containers.enable = lib.mkForce false;
-  virtualisation.podman.enable = lib.mkForce false;
 
   # Minimal user for installation
   users.users.installer = {
@@ -107,7 +103,7 @@
   security.sudo.wheelNeedsPassword = false;
 
   # Auto-login root user to console
-  services.getty.autologinUser = "root";
+  services.getty.autologinUser = lib.mkForce "root";
 
   # Welcome message with instructions
   environment.etc."issue".text = ''

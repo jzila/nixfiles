@@ -91,25 +91,34 @@ else
     echo "🔧 Setting up SSH CA provisioner..."
     
     # First, let's check what provisioners exist
-    echo "📋 Current provisioners:"
-    step ca provisioner list 2>/dev/null || echo "  (Could not list provisioners - may need authentication)"
-    echo ""
+    echo "📋 Checking existing provisioners..."
+    PROVISIONER_COUNT=$(step ca provisioner list 2>/dev/null | jq length 2>/dev/null || echo "0")
+    echo "  Found $PROVISIONER_COUNT provisioner(s)"
     
-    # Check if SSH provisioner already exists
+    # Check if SSH provisioner already exists and handle SSHPOP -> JWK migration
     echo "🔍 Checking for existing SSH provisioners..."
-    if step ca provisioner list 2>/dev/null | grep -q "ssh-ca"; then
-        echo "✅ SSH provisioner 'ssh-ca' already exists"
-    else
-        # Try to add SSH provisioner
-        echo "🔐 Adding SSH provisioner (you may be prompted for admin credentials)..."
-        if step ca provisioner add ssh-ca --type=SSHPOP; then
-            echo "✅ SSH provisioner added successfully"
+    
+    # Check if ssh-ca exists as SSHPOP (broken) - remove it
+    if step ca provisioner list 2>/dev/null | jq -r '.[] | select(.name == "ssh-ca") | .type' 2>/dev/null | grep -q "SSHPOP"; then
+        echo "🗑️  Removing broken SSHPOP ssh-ca provisioner..."
+        if step ca provisioner remove ssh-ca; then
+            echo "✅ SSHPOP provisioner removed"
         else
-            echo "❌ Failed to add SSH provisioner"
-            echo "You may need to:"
-            echo "1. Find the admin password in container logs: docker logs step-ca | grep password"
-            echo "2. Or add a JWK provisioner first: step ca provisioner add admin --type=JWK"
-            echo "3. Then retry: step ca provisioner add ssh-ca --type=SSHPOP"
+            echo "⚠️  Could not remove SSHPOP provisioner - continuing anyway"
+        fi
+    fi
+    
+    # Check if ssh-ca exists as JWK (working) - keep it
+    if step ca provisioner list 2>/dev/null | jq -r '.[] | select(.name == "ssh-ca") | .type' 2>/dev/null | grep -q "JWK"; then
+        echo "✅ JWK SSH provisioner 'ssh-ca' already exists"
+    else
+        # Add JWK SSH provisioner
+        echo "🔐 Adding JWK SSH provisioner (you may be prompted for admin credentials)..."
+        if step ca provisioner add ssh-ca --type=JWK --create; then
+            echo "✅ JWK SSH provisioner added successfully"
+        else
+            echo "❌ Failed to add JWK SSH provisioner"
+            echo "You may need to authenticate with the admin password"
             echo ""
             echo "❓ Continue without SSH CA setup? [y/N]"
             read -r continue_without
@@ -119,6 +128,36 @@ else
             echo "⚠️  Continuing without SSH CA - you'll need to configure it manually"
             SSH_CA_KEY=""
         fi
+    fi
+    
+    # Initialize SSH CA by generating a test certificate
+    echo "🔑 Initializing SSH CA by generating test certificate..."
+    
+    # Create temporary SSH key pair
+    TEMP_KEY="/tmp/ssh_ca_test_$$"
+    ssh-keygen -t ed25519 -f "$TEMP_KEY" -N "" -q -C "test-ssh-ca-init"
+    
+    CMD="step ssh certificate --provisioner ssh-ca --sign --principal test test $TEMP_KEY.pub"
+    echo "🔧 Attempting: $CMD"
+    
+    if step ssh certificate \
+        --provisioner ssh-ca \
+        --sign \
+        --principal test \
+        test \
+        "$TEMP_KEY.pub"; then
+        echo "✅ SSH CA initialized successfully"
+        rm -f "$TEMP_KEY" "$TEMP_KEY.pub" "$TEMP_KEY-cert.pub" 2>/dev/null
+    else
+        echo "🔍 Debugging SSH certificate generation..."
+        echo "🔧 Attempting with debug: STEPDEBUG=1 step ssh certificate --provisioner ssh-ca --sign --principal test test $TEMP_KEY.pub"
+        STEPDEBUG=1 step ssh certificate \
+            --provisioner ssh-ca \
+            --sign \
+            --principal test \
+            test \
+            "$TEMP_KEY.pub" || true
+        echo "⚠️  Could not initialize SSH CA - this may indicate SSH CA is not properly configured"
     fi
     
     # Try to get SSH CA key

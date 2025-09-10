@@ -37,7 +37,8 @@ fi
 # Generate SSH certificate
 echo "📋 Requesting SSH certificate..."
 if step ssh certificate \
-    --provisioner "admin" \
+    --provisioner "ssh-ca" \
+    --sign \
     --principal "$CERT_PRINCIPALS" \
     --not-after "$CERT_DURATION" \
     installer \
