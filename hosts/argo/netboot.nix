@@ -17,6 +17,9 @@
   # Enable ROCm support for AMD graphics
   nixpkgs.config.rocmSupport = true;
 
+  # Force gzip compression for initrd (better PXE compatibility than zstd)
+  boot.initrd.compressor = "gzip";
+
   # Graphics configuration for AMD Ryzen AI Max 300 series
   services.xserver.videoDrivers = [ "amdgpu" ];
   
