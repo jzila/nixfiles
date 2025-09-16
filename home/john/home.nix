@@ -20,6 +20,60 @@ in
   # fonts
   fonts.fontconfig.enable = true;
 
+  programs.git = {
+    enable = true;
+    userEmail = "john@jzila.com";
+    userName = "John Zila";
+    aliases = {
+      ci = "commit";
+      st = "status";
+      co = "checkout";
+      oneline = "log --pretty=oneline";
+      br = "branch";
+      la = "log --pretty=\"format:%ad %h (%an): %s\" --date=short";
+      lgthis = "log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
+      lgall = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
+      lgall2 = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit";
+      diff2 = "diff --ignore-all-space --patience";
+      lg = !"git lg1";
+      fixup = "commit --amend -C HEAD";
+      blast = "for-each-ref --sort=-committerdate refs/heads/ --format=\"%(committerdate:relative)%09%(refname:short)\"";
+      fix = "git diff --name-only --relative -z --diff-filter=U | uniq | xargs -0 \${EDITOR}";
+    };
+    delta = {
+      enable = true;
+      options = {
+        line-numbers = true;
+        side-by-side = true;
+      };
+    };
+    extraConfig = {
+      core = {
+        editor = "nvim";
+      };
+      color = {
+        ui = "true";
+      };
+      diff = {
+        tool = "nvimdiff";
+        algorithm = "patience";
+      };
+      push = {
+        default = "current";
+      };
+      merge = {
+        tool = "nvimdiff";
+        conflictstyle = "diff3";
+      };
+      rerere = {
+        enabled = "true";
+      };
+    };
+    ignores = [
+      ".vscode/**"
+    ];
+  };
+
   programs.neovim = {
     enable = true;
     defaultEditor = true;
