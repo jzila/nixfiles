@@ -51,6 +51,11 @@
       (pkgs.writeShellScriptBin "install-host" ''
         #!/usr/bin/env bash
         set -euo pipefail
+        if [[ "$(id -u)" -ne 0 ]]; then
+          echo "install-host must be run as root." >&2
+          echo "Try: sudo install-host <host> | <flakeRef>#<host>" >&2
+          exit 1
+        fi
         EMBEDDED_FLAKE="/etc/installer/flake"
         usage() {
           echo "Usage: install-host <host> | <flakeRef>#<host>" >&2
@@ -130,20 +135,56 @@
           exit 1
         fi
 
-        # Build flake reference: if bare host provided, copy embedded flake to temp and inject generated hardware-configuration
+        # Build device flake under /mnt/etc/nixos using nixfiles.lib.mkSystem via template
         if [[ -n "''${HOST}" ]]; then
-          TMPDIR=$(mktemp -d)
-          cp -aT "''${EMBEDDED_FLAKE}" "''${TMPDIR}/flake"
-          if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-            echo "Injecting generated hardware-configuration.nix into hosts/''${HOST} ..."
-            cp /mnt/etc/nixos/hardware-configuration.nix "''${TMPDIR}/flake/hosts/''${HOST}/hardware-configuration.nix"
-          else
-            echo "Warning: /mnt/etc/nixos/hardware-configuration.nix not found; proceeding without injection"
+          mkdir -p /mnt/etc/nixos
+          # Ensure hardware-configuration exists
+          if [[ ! -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+            echo "Generating hardware-configuration.nix ..."
+            nixos-generate-config --root /mnt
           fi
-          FLAKE="''${TMPDIR}/flake#''${HOST}"
+          echo "Copying embedded nixfiles into /mnt/etc/nixos/nixfiles ..."
+          mkdir -p /mnt/etc/nixos/nixfiles
+          cp -aL "''${EMBEDDED_FLAKE}"/. /mnt/etc/nixos/nixfiles/
+          if [[ ! -f /mnt/etc/nixos/flake.nix ]]; then
+            echo "Initializing device flake from template (relative path) ..."
+            ( cd /mnt/etc/nixos && nix flake init -t path:./nixfiles#nixos-device )
+          fi
+          # Lock the device flake so it pins the local path input purely
+          ( cd /mnt/etc/nixos && nix flake lock --update-input nixfiles )
+          echo "Setting host in /mnt/etc/nixos/host.nix ..."
+          printf '"%s"\n' "''${HOST}" > /mnt/etc/nixos/host.nix
+          FLAKE="/mnt/etc/nixos#''${HOST}"
         fi
 
-        echo "Using flake: ''${FLAKE}"; exec nixos-install --no-root-passwd --flake "''${FLAKE}"
+        echo "Using flake: ''${FLAKE}"
+        if nixos-install --no-root-passwd --flake "''${FLAKE}"; then
+          echo
+          echo "Installation complete."
+          echo
+          echo "Optionally set user passwords now (recommended):"
+          read -r -p "Enter username to set password for (leave empty to skip): " PWUSER || true
+          if [[ -n "''${PWUSER}" ]]; then
+            echo "Launching passwd for ''${PWUSER} inside the target system..."
+            nixos-enter --root /mnt -- passwd "''${PWUSER}" || true
+          fi
+          read -r -p "Set root password as well? [y/N]: " setroot || true
+          if [[ "''${setroot}" =~ ^[Yy]$ ]]; then
+            nixos-enter --root /mnt -- passwd root || true
+          fi
+          echo
+          echo "All done. You can now reboot."
+          echo "If you ever need to set passwords later from the installer:"
+          echo "  1) If root is LUKS-encrypted:"
+          echo "     cryptsetup open /dev/<root-partition> cryptroot"
+          echo "     mount /dev/mapper/cryptroot /mnt"
+          echo "     mount /dev/<esp-partition> /mnt/boot"
+          echo "  2) Enter the system and run passwd:"
+          echo "     nixos-enter --root /mnt -- passwd <username>"
+        else
+          echo "nixos-install failed" >&2
+          exit 1
+        fi
       '')
     ];
 

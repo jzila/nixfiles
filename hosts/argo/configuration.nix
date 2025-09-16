@@ -5,14 +5,9 @@
   imports = [
     # Framework Desktop hardware support
     nixos-hardware.nixosModules.framework-amd-ai-300-series
-    # Hardware scan results
-    ./hardware-configuration.nix
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
   ];
-
-  # System identification
-  networking.hostName = "argo";
 
   # Enable ROCm support for AMD graphics
   nixpkgs.config.rocmSupport = true;
@@ -25,6 +20,24 @@
       # Add any Framework Desktop specific modprobe options here
     '';
   };
+
+  # Networking configuration
+  networking = {
+    hostName = "argo";
+    extraHosts = ''
+      127.0.0.1 manuscripts.localhost
+    '';
+  };
+
+  # Ollama container configuration for desktop GPU
+  containers = (import ../../modules/ollama.nix {
+    inherit nixpkgs lib;
+    devices = [
+      "/dev/kfd"
+      "/dev/dri/card0"      # Integrated GPU (Radeon 8060S)
+      "/dev/dri/renderD128" # Integrated GPU render node
+    ];
+  }).containers;
 
   # Graphics configuration for AMD Ryzen AI Max 300 series
   services.xserver.videoDrivers = [ "amdgpu" ];
@@ -41,16 +54,6 @@
 
   # Power management - use power-profiles-daemon for desktop (not TLP)
   services.power-profiles-daemon.enable = true;
-
-  # Ollama container configuration for desktop GPU
-  containers = (import ../../modules/ollama.nix {
-    inherit nixpkgs lib;
-    devices = [
-      "/dev/kfd"
-      "/dev/dri/card0"      # Integrated GPU (Radeon 8060S)
-      "/dev/dri/renderD128" # Integrated GPU render node
-    ];
-  }).containers;
 
   # Desktop-specific user configuration
   users.users.john = {
@@ -81,11 +84,6 @@
   services.tailscale.extraUpFlags = [
     "--operator=john"
   ];
-
-  # Framework Desktop specific networking (if any)
-  networking.extraHosts = ''
-    127.0.0.1 manuscripts.localhost
-  '';
 
   # NixOS state version
   system.stateVersion = "23.11";

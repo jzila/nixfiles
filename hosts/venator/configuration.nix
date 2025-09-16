@@ -9,8 +9,6 @@
     [
       # Base image for GA402
       nixos-hardware.nixosModules.asus-zephyrus-ga402
-      # Include the results of the hardware scan.
-      ./hardware-configuration.nix
       # Shared desktop configuration
       ../../modules/desktop/aliza.nix
     ];
@@ -33,7 +31,6 @@
       127.0.0.1 manuscripts.localhost
     '';
   };
-
 
   containers = (import ../../modules/ollama.nix {
     inherit nixpkgs lib;

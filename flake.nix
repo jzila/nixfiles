@@ -63,30 +63,41 @@
         home-manager.users.john = import ./home/john/home.nix;
       };
 
-      # Dynamic host loading helper
-      mkHost = hostPath: extraModules: lib.nixosSystem {
-        inherit system;
-        specialArgs = inputs // {
-          inherit pkgs-unstable;
+      # Public generator: build a NixOS system from provided modules
+      # Accepts extra keys (e.g., legacy 'system') and prefers a provided system if present
+      mkSystem = args@{ hostPath, extraModules ? [ ], specialArgs ? { }, ... }:
+        let
+          sys = if args ? system then args.system else system;
+        in lib.nixosSystem {
+          system = sys;
+          specialArgs = inputs // { inherit pkgs-unstable; } // specialArgs;
+          modules = [ hostPath ] ++ extraModules;
         };
-        modules = [
-          hostPath
-        ] ++ extraModules;
-      };
 
     in {
+      lib.mkSystem = mkSystem;
       nixosConfigurations = {
-        # Main system configuration with Home Manager
-        venator = mkHost ./hosts/venator/configuration.nix [ homeManagerModule ];
+        # Main system configuration with Home Manager (include repo hardware config)
+        venator = mkSystem {
+          hostPath = ./hosts/venator/configuration.nix;
+          extraModules = [ ./hosts/venator/hardware-configuration.nix homeManagerModule ];
+        };
         
         # Framework Desktop configuration with Home Manager
-        argo = mkHost ./hosts/argo/configuration.nix [ homeManagerModule ];
+        argo = mkSystem {
+          hostPath = ./hosts/argo/configuration.nix;
+          extraModules = [ ./hosts/argo/hardware-configuration.nix homeManagerModule ];
+        };
         
         # Generic netboot installer (no Home Manager needed)
-        installer-netboot = mkHost ./hosts/installer-netboot/configuration.nix [ ];
+        installer-netboot = mkSystem { hostPath = ./hosts/installer-netboot/configuration.nix; };
         
         # ASUS installation ISO (no Home Manager needed)
-        asus-iso = mkHost ./hosts/asus-iso.nix [ ];
+        asus-iso = mkSystem { hostPath = ./hosts/asus-iso.nix; };
+      };
+      templates.nixos-device = {
+        path = ./templates/nixos-device;
+        description = "Per-device flake using nixfiles.lib.mkSystem with hardware-configuration.nix";
       };
     };
 }
