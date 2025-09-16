@@ -46,7 +46,7 @@
   # Installer tooling
   environment.systemPackages =
     (with pkgs; [
-      nixos-install-tools git curl jq parted e2fsprogs btrfs-progs lvm2 mdadm cryptsetup
+      nixos-install-tools git curl jq parted e2fsprogs btrfs-progs lvm2 mdadm cryptsetup gptfdisk
     ]) ++ [
       (pkgs.writeShellScriptBin "install-host" ''
         #!/usr/bin/env bash
@@ -59,7 +59,11 @@
         }
         if [[ $# -lt 1 ]]; then usage; exit 1; fi
         ARG="$1"
-        if [[ "$ARG" == *#* ]]; then FLAKE="$ARG"; else FLAKE="''${EMBEDDED_FLAKE}#''${ARG}"; fi
+        if [[ "$ARG" == *#* ]]; then
+          FLAKE="$ARG"; HOST=""
+        else
+          HOST="$ARG"; FLAKE=""
+        fi
 
         echo
         echo "Disk partitioning options:"
@@ -68,10 +72,28 @@
         read -r -p "Choose [1/2]: " choice || true
         if [[ -z "''${choice}" || "''${choice}" == 1 ]]; then
           echo
-          echo "Available disks:"; lsblk -d -o NAME,SIZE,MODEL,TYPE | awk '$4=="disk"{print}'
-          echo
-          read -r -p "Enter target disk (e.g., /dev/nvme0n1 or /dev/sda): " DISK
-          if [[ -z "''${DISK}" || ! -b "''${DISK}" ]]; then echo "Invalid disk: ''${DISK}" >&2; exit 1; fi
+          echo "Detecting candidate disks ..."
+          mapfile -t CANDS < <(lsblk -dn -o NAME,TYPE,SIZE | awk '$2=="disk"{printf("/dev/%s %s\n", $1, $3)}')
+          if [[ ''${#CANDS[@]} -eq 0 ]]; then
+            echo "No installable disks detected." >&2; exit 1
+          fi
+          if [[ ''${#CANDS[@]} -eq 1 ]]; then
+            DISK=$(awk '{print $1}' <<<"''${CANDS[0]}")
+            echo "Selected disk: ''${DISK} ($(awk '{print $2}' <<<"''${CANDS[0]}") )"
+          else
+            echo "Multiple disks detected:"
+            idx=1
+            for d in "''${CANDS[@]}"; do
+              printf "  %d) %s %s\n" "$idx" "$(awk '{print $1}' <<<"$d")" "$(awk '{print $2}' <<<"$d")"
+              idx=$((idx+1))
+            done
+            read -r -p "Choose disk [1-''${#CANDS[@]}] (default 1): " pick || true
+            if [[ -z "''${pick}" ]]; then pick=1; fi
+            if ! [[ "''${pick}" =~ ^[0-9]+$ ]] || (( pick < 1 || pick > ''${#CANDS[@]} )); then
+              echo "Invalid choice." >&2; exit 1
+            fi
+            DISK=$(awk '{print $1}' <<<"''${CANDS[$((pick-1))]}")
+          fi
           echo "WARNING: This will ERASE all data on ''${DISK}!"; read -r -p "Type 'ERASE' to confirm: " confirm
           if [[ "''${confirm}" != "ERASE" ]]; then echo "Aborted."; exit 1; fi
           if [[ "''${DISK}" =~ (nvme|mmcblk) ]]; then P1="''${DISK}p1"; P2="''${DISK}p2"; else P1="''${DISK}1"; P2="''${DISK}2"; fi
@@ -108,6 +130,19 @@
           exit 1
         fi
 
+        # Build flake reference: if bare host provided, copy embedded flake to temp and inject generated hardware-configuration
+        if [[ -n "''${HOST}" ]]; then
+          TMPDIR=$(mktemp -d)
+          cp -aT "''${EMBEDDED_FLAKE}" "''${TMPDIR}/flake"
+          if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+            echo "Injecting generated hardware-configuration.nix into hosts/''${HOST} ..."
+            cp /mnt/etc/nixos/hardware-configuration.nix "''${TMPDIR}/flake/hosts/''${HOST}/hardware-configuration.nix"
+          else
+            echo "Warning: /mnt/etc/nixos/hardware-configuration.nix not found; proceeding without injection"
+          fi
+          FLAKE="''${TMPDIR}/flake#''${HOST}"
+        fi
+
         echo "Using flake: ''${FLAKE}"; exec nixos-install --no-root-passwd --flake "''${FLAKE}"
       '')
     ];
@@ -121,4 +156,3 @@
   # Embed this repository's flake into the initrd for offline installs
   environment.etc."installer/flake".source = ../../.;
 }
-
