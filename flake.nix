@@ -76,6 +76,7 @@
 
     in {
       lib.mkSystem = mkSystem;
+      lib.homeManagerModule = homeManagerModule;
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {
