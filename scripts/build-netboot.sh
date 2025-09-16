@@ -20,16 +20,16 @@ mkdir -p "$OUTPUT_DIR"
 
 # Build components directly to output directory
 echo "Building kernel..."
-nix build .#nixosConfigurations.argo-netboot.config.system.build.kernel -o "$OUTPUT_DIR/kernel"
+nix build .#nixosConfigurations.installer-netboot.config.system.build.kernel -o "$OUTPUT_DIR/kernel"
 
 echo "Building initrd with embedded squashfs..."
-nix build .#nixosConfigurations.argo-netboot.config.system.build.netbootRamdisk -o "$OUTPUT_DIR/result"
+nix build .#nixosConfigurations.installer-netboot.config.system.build.netbootRamdisk -o "$OUTPUT_DIR/result"
 
 echo "Building iPXE scripts (classic + EFI variant)..."
 # Classic script from nixos netboot module (for reference)
-nix build .#nixosConfigurations.argo-netboot.config.system.build.netbootIpxeScript -o "$OUTPUT_DIR/netboot-script-classic"
+nix build .#nixosConfigurations.installer-netboot.config.system.build.netbootIpxeScript -o "$OUTPUT_DIR/netboot-script-classic"
 # EFI-friendly script we generate (imgargs + boot vmlinuz)
-nix build .#nixosConfigurations.argo-netboot.config.system.build.netbootIpxeScriptEfi -o "$OUTPUT_DIR/netboot-script-efi"
+nix build .#nixosConfigurations.installer-netboot.config.system.build.netbootIpxeScriptEfi -o "$OUTPUT_DIR/netboot-script-efi"
 
 # Copy files from symlinks to actual files
 echo "Copying files in $OUTPUT_DIR..."
