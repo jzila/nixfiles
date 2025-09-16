@@ -1,10 +1,28 @@
 # Shared desktop/workstation configuration module
-{ config, pkgs, pkgs-unstable, lib, ... }:
+{ config
+, pkgs
+, pkgs-unstable
+, lib
+, home-manager
+, nix-vscode-extensions
+, codex
+, wifitui
+, ... }:
 
 {
   imports = [
     ../ssh-ca
+    home-manager.nixosModules.home-manager
   ];
+
+  # Home Manager wiring – keep it here so any host that imports this desktop
+  # module automatically gets HM enabled with the shared user config.
+  home-manager.useGlobalPkgs = true;
+  home-manager.useUserPackages = true;
+  home-manager.extraSpecialArgs = {
+    inherit pkgs-unstable nix-vscode-extensions codex wifitui;
+  };
+  home-manager.users.john = import ../../home/john/home.nix;
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;

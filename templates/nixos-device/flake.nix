@@ -13,7 +13,7 @@
     in {
       nixosConfigurations."${host}" = nixfiles.lib.mkSystem {
         hostPath = nixfiles + "/hosts/${host}/configuration.nix";
-        extraModules = [ ./hardware-configuration.nix nixfiles.lib.homeManagerModule ];
+        extraModules = [ ./hardware-configuration.nix ];
       };
     };
 }

@@ -23,7 +23,7 @@
     };
 
     codex = {
-      url = "github:openai/codex/b3f958c24e4c4350c06220bbafd9982de13e3acb";
+      url = "github:jessfraz/codex/add-github-action-for-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -81,13 +81,13 @@
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {
           hostPath = ./hosts/venator/configuration.nix;
-          extraModules = [ ./hosts/venator/hardware-configuration.nix homeManagerModule ];
+          extraModules = [ ./hosts/venator/hardware-configuration.nix ];
         };
         
         # Framework Desktop configuration with Home Manager
         argo = mkSystem {
           hostPath = ./hosts/argo/configuration.nix;
-          extraModules = [ ./hosts/argo/hardware-configuration.nix homeManagerModule ];
+          extraModules = [ ./hosts/argo/hardware-configuration.nix ];
         };
         
         # Generic netboot installer (no Home Manager needed)
