@@ -14,7 +14,11 @@
 
   # Boot configuration
   boot = {
-    kernelParams = [];
+    kernelParams = [
+      "amd_iommu=off"
+      "amdgpu.gttsize=131072"
+      "ttm.pages_limit=33554432"
+    ];
     # Framework Desktop specific kernel modules config if needed
     extraModprobeConfig = ''
       # Add any Framework Desktop specific modprobe options here
