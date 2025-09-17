@@ -32,10 +32,11 @@
   # Ollama container configuration for desktop GPU
   containers = (import ../../modules/ollama.nix {
     inherit nixpkgs lib;
+    # Bind directories/devices rather than specific nodes to avoid
+    # failures when device numbering differs or nodes are absent.
     devices = [
       "/dev/kfd"
-      "/dev/dri/card0"      # Integrated GPU (Radeon 8060S)
-      "/dev/dri/renderD128" # Integrated GPU render node
+      "/dev/dri"
     ];
   }).containers;
 
