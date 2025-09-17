@@ -81,13 +81,13 @@
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {
           hostPath = ./hosts/venator/configuration.nix;
-          extraModules = [ ./hosts/venator/hardware-configuration.nix ];
+          extraModules = [ ./hosts/venator/hardware-configuration.nix homeManagerModule ];
         };
         
         # Framework Desktop configuration with Home Manager
         argo = mkSystem {
           hostPath = ./hosts/argo/configuration.nix;
-          extraModules = [ ./hosts/argo/hardware-configuration.nix ];
+          extraModules = [ ./hosts/argo/hardware-configuration.nix homeManagerModule ];
         };
         
         # Generic netboot installer (no Home Manager needed)

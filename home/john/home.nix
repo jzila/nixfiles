@@ -35,10 +35,10 @@ in
       lgall = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
       lgall2 = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit";
       diff2 = "diff --ignore-all-space --patience";
-      lg = !"git lg1";
+      lg = "lg1";
       fixup = "commit --amend -C HEAD";
       blast = "for-each-ref --sort=-committerdate refs/heads/ --format=\"%(committerdate:relative)%09%(refname:short)\"";
-      fix = "git diff --name-only --relative -z --diff-filter=U | uniq | xargs -0 \${EDITOR}";
+      fix = "diff --name-only --relative -z --diff-filter=U | uniq | xargs -0 \${EDITOR}";
     };
     delta = {
       enable = true;
@@ -152,7 +152,7 @@ in
     pkgs.ripgrep
     pkgs.openssl
   ] ++ [
-    pkgs-unstable.python3Full
+    pkgs-unstable.python3
     pkgs-unstable.nodejs_22
     pkgs-unstable.bun
     pkgs-unstable.yarn
@@ -160,7 +160,6 @@ in
     pkgs-unstable.ollama
     pkgs-unstable.go
     pkgs-unstable.lazygit
-    pkgs-unstable.delta
     pkgs-unstable.signal-desktop
     pkgs-unstable.zed-editor
     pkgs-unstable.gh
