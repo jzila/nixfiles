@@ -136,6 +136,13 @@ in
   home.sessionVariables = {
     OLLAMA_HOST = "127.0.0.1:11434";
   };
+  home.file.".config/nixpkgs/config.nix" = {
+    text = ''
+      {
+        allowUnfree = true;
+      }
+    '';
+  };
   home.packages = [
     pkgs.just
     pkgs.kitty

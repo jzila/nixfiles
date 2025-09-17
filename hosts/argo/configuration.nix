@@ -35,6 +35,7 @@
     # Bind directories/devices rather than specific nodes to avoid
     # failures when device numbering differs or nodes are absent.
     containerHostAddr = "0.0.0.0";
+    gfxOverride = "11.5.1";
     devices = [
       "/dev/kfd"
       "/dev/dri/card1"

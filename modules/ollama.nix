@@ -5,6 +5,7 @@
 , lib
 , containerHostAddr ? "127.0.0.1"
 , autoStart ? true
+, gfxOverride ? "10.3.0"
 , devices ? [
     "/dev/kfd"
     "/dev/dri" # bind the whole directory; contains card*/renderD*
@@ -36,7 +37,7 @@
         host = containerHostAddr;
         port = port;
         environmentVariables = {
-          HSA_OVERRIDE_GFX_VERSION = "10.3.0";
+          HSA_OVERRIDE_GFX_VERSION = gfxOverride;
         };
       };
       system.stateVersion = "24.05";
