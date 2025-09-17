@@ -34,9 +34,11 @@
     inherit nixpkgs lib;
     # Bind directories/devices rather than specific nodes to avoid
     # failures when device numbering differs or nodes are absent.
+    containerHostAddr = "0.0.0.0";
     devices = [
       "/dev/kfd"
-      "/dev/dri"
+      "/dev/dri/card1"
+      "/dev/dri/renderD128"
     ];
   }).containers;
 

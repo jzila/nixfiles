@@ -19,7 +19,7 @@
     hostAddress = containerHostAddr;
     # Allow access to the specified device nodes inside the container.
     allowedDevices = let
-      deviceDescr = node: { inherit node; modifier = "rwm"; };
+      deviceDescr = node: { inherit node; modifier = "rw"; };
     in map deviceDescr devices;
     bindMounts = (lib.genAttrs devices (name: {})) // {
       "/sys/module".isReadOnly = true;
