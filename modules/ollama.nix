@@ -7,8 +7,7 @@
 , autoStart ? true
 , devices ? [
     "/dev/kfd"
-    "/dev/dri/card0"
-    "/dev/dri/renderD128"
+    "/dev/dri" # bind the whole directory; contains card*/renderD*
   ]
 , port ? 11434
 , ...
@@ -18,13 +17,16 @@
     inherit nixpkgs autoStart;
     privateNetwork = false;
     hostAddress = containerHostAddr;
+    # Allow access to the specified device nodes inside the container.
     allowedDevices = let
-      deviceDescr = node: { inherit node; modifier = "rw"; };
+      deviceDescr = node: { inherit node; modifier = "rwm"; };
     in map deviceDescr devices;
     bindMounts = (lib.genAttrs devices (name: {})) // {
       "/sys/module".isReadOnly = true;
     };
     config = { pkgs, lib, ... }: {
+      # Persist logs so early boot messages are available via machinectl/journalctl -M
+      services.journald.extraConfig = "Storage=persistent";
       networking.firewall.allowedTCPPorts = [ port ];
       networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
       services.ollama = {
