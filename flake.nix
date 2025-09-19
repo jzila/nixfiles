@@ -22,6 +22,11 @@
       inputs.home-manager.follows = "home-manager";
     };
 
+    rocm-nightly = {
+      url = "path:./support/rocm-nightly-empty";
+      flake = false;
+    };
+
     codex = {
       url = "github:jessfraz/codex/add-github-action-for-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -33,7 +38,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, rocm-nightly, ... }@inputs:
     let
       system = "x86_64-linux";
       

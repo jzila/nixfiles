@@ -1,0 +1,2 @@
+Placeholder directory used when /opt/rocm-nightly is not present.
+Nix flake points here to keep evaluation pure on hosts without the nightly ROCm tree.

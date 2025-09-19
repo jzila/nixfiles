@@ -5,7 +5,10 @@
 , lib
 , containerHostAddr ? "127.0.0.1"
 , autoStart ? true
-, gfxOverride ? "10.3.0"
+, gfxOverride ? null # e.g. set to "11.5.0" for Strix Halo (RDNA 3.5) until ROCm ships native support
+, hipUsePrecompiledKernels ? false # newer GPUs often need HIP to JIT compile kernels
+, rocrVisibleDevices ? null # optionally restrict the device list (e.g. "0" for the first GPU)
+, extraEnvironmentVariables ? {}
 , devices ? [
     "/dev/kfd"
     "/dev/dri" # bind the whole directory; contains card*/renderD*
@@ -36,9 +39,17 @@
         acceleration = "rocm";
         host = containerHostAddr;
         port = port;
-        environmentVariables = {
-          HSA_OVERRIDE_GFX_VERSION = gfxOverride;
-        };
+        environmentVariables =
+          lib.optionalAttrs (gfxOverride != null) {
+            HSA_OVERRIDE_GFX_VERSION = gfxOverride;
+          }
+          // lib.optionalAttrs (!hipUsePrecompiledKernels) {
+            HIP_USE_PRECOMPILED_KERNELS = "0";
+          }
+          // lib.optionalAttrs (rocrVisibleDevices != null) {
+            ROCR_VISIBLE_DEVICES = rocrVisibleDevices;
+          }
+          // extraEnvironmentVariables;
       };
       system.stateVersion = "24.05";
     };

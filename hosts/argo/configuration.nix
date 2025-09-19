@@ -1,12 +1,23 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, ... }:
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, rocm-nightly, ... }:
 
+let
+  rocmPkgs = pkgs.rocmPackages or {};
+  rocmPackagesList = paths:
+    builtins.filter (pkg: pkg != null) (map (path: lib.attrByPath path null rocmPkgs) paths);
+  hipRuntime = lib.attrByPath [ "hip-runtime" ] null rocmPkgs;
+in
 {
   imports = [
     # Framework Desktop hardware support
     nixos-hardware.nixosModules.framework-amd-ai-300-series
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
+    # Overlay ROCm with TheRock nightly build extracted under /opt/rocm-nightly
+    (import ../../modules/rocm-nightly.nix {
+      inherit config pkgs lib;
+      rocmRoot = rocm-nightly;
+    })
   ];
 
   # Enable ROCm support for AMD graphics
@@ -40,6 +51,10 @@
     # failures when device numbering differs or nodes are absent.
     containerHostAddr = "0.0.0.0";
     gfxOverride = "11.5.1";
+    extraEnvironmentVariables = lib.optionalAttrs (hipRuntime != null) {
+      ROCM_PATH = toString hipRuntime;
+      ROCM_HOME = toString hipRuntime;
+    };
     devices = [
       "/dev/kfd"
       "/dev/dri/card1"
@@ -52,10 +67,22 @@
   
   # Enable hardware graphics acceleration
   hardware.graphics.enable = true;
-  hardware.graphics.extraPackages = [
-    pkgs-unstable.amdvlk
-    pkgs.rocmPackages.clr.icd
-  ];
+  hardware.graphics.extraPackages =
+    (rocmPackagesList [
+      [ "hsa-rocr" ]
+      [ "hip-runtime" ]
+      [ "rocblas" ]
+      [ "rocsparse" ]
+      [ "rocfft" ]
+      [ "rccl" ]
+      [ "miopen" ]
+      [ "rpp" ]
+      [ "rocminfo" ]
+    ])
+    ++ [
+      pkgs-unstable.amdvlk
+      pkgs-unstable.nvtopPackages.amd
+    ];
   hardware.graphics.extraPackages32 = [
     pkgs-unstable.driversi686Linux.amdvlk
   ];
@@ -83,6 +110,12 @@
     ];
     useDefaultShell = true;
   };
+
+  environment.systemPackages = rocmPackagesList [
+    [ "hsa-rocr" ]
+    [ "rocminfo" ]
+    [ "hip-runtime" ]
+  ];
 
   # Keybase security wrapper ownership
   security.wrappers.keybase-redirector.owner = "john";
