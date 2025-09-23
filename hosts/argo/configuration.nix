@@ -1,13 +1,38 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
 { config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, ... }:
-
+let
+  ollama = import ../../modules/ollama.nix {
+    inherit nixpkgs lib;
+    listenHost = "0.0.0.0";
+    openFirewallOnHost = true;
+    gfxOverride = "11.5.1";
+    extraEnvironment = {
+      OLLAMA_DEBUG = "2";
+    };
+    # devices = [
+    #   "/dev/kfd"
+    #   "/dev/dri/card1"
+    #   "/dev/dri/renderD128"
+    # ];
+  };
+in
 {
   imports = [
     # Framework Desktop hardware support
     nixos-hardware.nixosModules.framework-amd-ai-300-series
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
+    ollama
   ];
+
+  # Networking configuration
+  networking = {
+    hostName = "argo";
+    extraHosts = ''
+      127.0.0.1 manuscripts.localhost
+    '';
+  };
+  containers = ollama.containers;
 
   # Enable ROCm support for AMD graphics
   nixpkgs.config.rocmSupport = true;
@@ -25,27 +50,6 @@
     '';
   };
 
-  # Networking configuration
-  networking = {
-    hostName = "argo";
-    extraHosts = ''
-      127.0.0.1 manuscripts.localhost
-    '';
-  };
-
-  # Ollama container configuration for desktop GPU
-  containers = (import ../../modules/ollama.nix {
-    inherit nixpkgs lib;
-    # Bind directories/devices rather than specific nodes to avoid
-    # failures when device numbering differs or nodes are absent.
-    containerHostAddr = "0.0.0.0";
-    gfxOverride = "11.5.1";
-    devices = [
-      "/dev/kfd"
-      "/dev/dri/card1"
-      "/dev/dri/renderD128"
-    ];
-  }).containers;
 
   # Graphics configuration for AMD Ryzen AI Max 300 series
   services.xserver.videoDrivers = [ "amdgpu" ];
