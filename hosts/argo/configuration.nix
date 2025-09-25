@@ -16,7 +16,7 @@ let
       OLLAMA_FLASH_ATTENTION = "1";
       # OLLAMA_ACCELERATE = "1";
       # OLLAMA_NUM_GPU_LAYERS = "9999";
-      OLLAMA_DEBUG = "2";
+      OLLAMA_DEBUG = "1";
       OLLAMA_NUM_PARALLEL = "8";
     };
   };
