@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running 'nixos-help').
 
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, ... }:
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, ... }:
 
 {
   imports =
@@ -33,7 +33,8 @@
   };
 
   containers = (import ../../modules/ollama.nix {
-    inherit nixpkgs lib;
+    nixpkgs = nixpkgs-jzila;
+    inherit lib;
     devices = [
       "/dev/kfd"
       "/dev/dri/card1"      # Discrete GPU (RX 6650 XT/6700S/6800S)

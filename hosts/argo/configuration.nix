@@ -1,19 +1,24 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-unstable, ... }:
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-jzila, ... }:
 let
   ollama = import ../../modules/ollama.nix {
-    inherit nixpkgs lib;
+    inherit lib;
+    nixpkgs = nixpkgs-jzila;
     listenHost = "0.0.0.0";
     openFirewallOnHost = true;
     gfxOverride = "11.5.1";
-    extraEnvironment = {
-      OLLAMA_DEBUG = "2";
-    };
     # devices = [
     #   "/dev/kfd"
     #   "/dev/dri/card1"
     #   "/dev/dri/renderD128"
     # ];
+    extraEnvironment = {
+      OLLAMA_FLASH_ATTENTION = "1";
+      # OLLAMA_ACCELERATE = "1";
+      # OLLAMA_NUM_GPU_LAYERS = "9999";
+      OLLAMA_DEBUG = "2";
+      OLLAMA_NUM_PARALLEL = "8";
+    };
   };
 in
 {

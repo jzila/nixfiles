@@ -4,6 +4,9 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-jzila = {
+      url = "github:jzila/nixpkgs/jzila/ollama-0-12-1";
+    };
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
@@ -23,7 +26,7 @@
     };
 
     codex = {
-      url = "github:jessfraz/codex/add-github-action-for-nix";
+      url = "github:jzila/codex/add-github-action-for-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -33,10 +36,16 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, home-manager, ... }@inputs:
     let
       system = "x86_64-linux";
-      
+
+      # Configure ollama release override; set values to track a Github release
+      ollamaRelease = {
+        version = "0.12.1";
+        srcHash = "sha256-+kdKXHhv1q16CK1PubgadrBM5YMYTBaPB2Et7hSmUWk=";
+      };
+
       # Configure pkgs instances
       pkgs-unstable = import nixpkgs-unstable {
         inherit system;
@@ -50,6 +59,12 @@
         config.rocmSupport = true;
       };
 
+      pkgs-jzila = import nixpkgs-jzila {
+        inherit system;
+        config.allowUnfree = true;
+        config.rocmSupport = true;
+      };
+
       lib = nixpkgs.lib;
 
       # Common Home Manager configuration
@@ -58,7 +73,7 @@
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable;
+          inherit pkgs-unstable pkgs-jzila;
         };
         home-manager.users.john = import ./home/john/home.nix;
       };

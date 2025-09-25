@@ -1,4 +1,4 @@
-{ config, pkgs, pkgs-unstable, nix-vscode-extensions, codex, wifitui, ... }:
+{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, codex, wifitui, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -164,7 +164,6 @@ in
     pkgs-unstable.bun
     pkgs-unstable.yarn
     pkgs-unstable.earthly
-    pkgs-unstable.ollama
     pkgs-unstable.go
     pkgs-unstable.lazygit
     pkgs-unstable.signal-desktop
@@ -178,5 +177,7 @@ in
     pkgs-unstable.step-cli
     codex.packages.${system}.codex-rs
     wifitui.packages.${system}.default
+  ] ++ [
+    pkgs-jzila.ollama
   ];
 }
