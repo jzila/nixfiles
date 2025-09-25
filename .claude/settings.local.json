@@ -4,7 +4,12 @@
       "Bash(nix flake metadata:*)",
       "Bash(grep:*)",
       "Bash(nix-store:*)",
-      "Bash(nix why-depends:*)"
+      "Bash(nix why-depends:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:wiki.nixos.org)",
+      "Read(//home/john/.ssh/**)",
+      "Bash(./scripts/build-netboot.sh:*)"
     ]
   },
   "enableAllProjectMcpServers": false
