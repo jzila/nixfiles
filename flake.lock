@@ -9,15 +9,15 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1758742732,
-        "narHash": "sha256-aE8rSMG7sST3IP5VSuy4UWpKqLI95LF0HL5gWsua4AU=",
-        "owner": "jzila",
+        "lastModified": 1758816849,
+        "narHash": "sha256-4zbZC5h1cvbUUzpcXWdwqbjKpul8hAEnYYfV0ZZKcoI=",
+        "owner": "jessfraz",
         "repo": "codex",
-        "rev": "afbdb5a271eecd279fe48d455abccd45ecaa31ac",
+        "rev": "e0b44d8ab057f7572534760ec056cd254fde1b45",
         "type": "github"
       },
       "original": {
-        "owner": "jzila",
+        "owner": "jessfraz",
         "ref": "add-github-action-for-nix",
         "repo": "codex",
         "type": "github"
@@ -153,27 +153,27 @@
     },
     "nixpkgs-jzila": {
       "locked": {
-        "lastModified": 1758758744,
-        "narHash": "sha256-u15r8ljfDNZIe3gYak9E3Jl7NmySUzbjkkMXu9kfEO8=",
+        "lastModified": 1758819017,
+        "narHash": "sha256-HVh5KfEg974xYmb3nPoJWeGO+rGrZPEXoDNYUGAuI3U=",
         "owner": "jzila",
         "repo": "nixpkgs",
-        "rev": "3e197447da608d1cf30206d0a16a63bed1e6cd1f",
+        "rev": "5c0ac4abc036a76c99d18cc539e8a43cb92dc458",
         "type": "github"
       },
       "original": {
         "owner": "jzila",
-        "ref": "jzila/ollama-0-12-1",
+        "ref": "jzila/ollama-0-12-2",
         "repo": "nixpkgs",
         "type": "github"
       }
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1758427187,
-        "narHash": "sha256-pHpxZ/IyCwoTQPtFIAG2QaxuSm8jWzrzBGjwQZIttJc=",
+        "lastModified": 1758690382,
+        "narHash": "sha256-NY3kSorgqE5LMm1LqNwGne3ZLMF2/ILgLpFr1fS4X3o=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "554be6495561ff07b6c724047bdd7e0716aa7b46",
+        "rev": "e643668fd71b949c53f8626614b21ff71a07379d",
         "type": "github"
       },
       "original": {
@@ -293,11 +293,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1758552794,
-        "narHash": "sha256-jR99i99k+cyRvPiovajFou+S8vkc8A2+Ry0/FBIamZ8=",
+        "lastModified": 1758813532,
+        "narHash": "sha256-ybXGkaYTXmByetm0EXLRB4MUIQq8gn8T9Rc0JPOF3Pw=",
         "owner": "shazow",
         "repo": "wifitui",
-        "rev": "80383adbde12853656e2f951dc04a3e1d5747292",
+        "rev": "4de1e47cd4157ea91a5af064ff0d9d45222467d5",
         "type": "github"
       },
       "original": {
