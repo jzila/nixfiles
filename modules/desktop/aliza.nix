@@ -116,6 +116,7 @@
     enable = true;
     useRoutingFeatures = "client";
     package = pkgs-unstable.tailscale;
+    permitCertUid = "john";
   };
 
   # Networking

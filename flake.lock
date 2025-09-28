@@ -153,16 +153,16 @@
     },
     "nixpkgs-jzila": {
       "locked": {
-        "lastModified": 1758819017,
-        "narHash": "sha256-HVh5KfEg974xYmb3nPoJWeGO+rGrZPEXoDNYUGAuI3U=",
+        "lastModified": 1758899804,
+        "narHash": "sha256-NDGtpSH6ja/wgxljWTPw/7eYWnaQ4i8KpzMZj0pPd40=",
         "owner": "jzila",
         "repo": "nixpkgs",
-        "rev": "5c0ac4abc036a76c99d18cc539e8a43cb92dc458",
+        "rev": "5b751d1b50366c18fc5ef7faa82f5d4d2b75ef47",
         "type": "github"
       },
       "original": {
         "owner": "jzila",
-        "ref": "jzila/ollama-0-12-2",
+        "ref": "master",
         "repo": "nixpkgs",
         "type": "github"
       }
