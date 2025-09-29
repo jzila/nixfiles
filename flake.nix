@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixpkgs-jzila.url = "github:jzila/nixpkgs/master";
+    nixpkgs-jzila.url = "github:jzila/nixpkgs/jzila/orca-slicer";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
