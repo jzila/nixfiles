@@ -179,5 +179,6 @@ in
     wifitui.packages.${system}.default
   ] ++ [
     pkgs-jzila.ollama
+    pkgs-jzila.orca-slicer
   ];
 }

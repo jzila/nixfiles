@@ -4,9 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixpkgs-jzila = {
-      url = "github:jzila/nixpkgs/jzila/ollama-0-12-1";
-    };
+    nixpkgs-jzila.url = "github:jzila/nixpkgs/jzila/orca-slicer";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
@@ -26,7 +24,7 @@
     };
 
     codex = {
-      url = "github:jzila/codex/add-github-action-for-nix";
+      url = "github:jessfraz/codex/add-github-action-for-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -39,12 +37,6 @@
   outputs = { self, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, home-manager, ... }@inputs:
     let
       system = "x86_64-linux";
-
-      # Configure ollama release override; set values to track a Github release
-      ollamaRelease = {
-        version = "0.12.1";
-        srcHash = "sha256-+kdKXHhv1q16CK1PubgadrBM5YMYTBaPB2Et7hSmUWk=";
-      };
 
       # Configure pkgs instances
       pkgs-unstable = import nixpkgs-unstable {
