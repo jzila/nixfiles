@@ -1,4 +1,4 @@
-{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, codex, wifitui, ... }:
+{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, codex, beads-fixed, wifitui, roborev, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -158,6 +158,8 @@ in
     pkgs.tree
     pkgs.ripgrep
     pkgs.openssl
+    pkgs.awscli2
+    pkgs.zed-editor
   ] ++ [
     pkgs-unstable.python3
     pkgs-unstable.nodejs_22
@@ -167,7 +169,6 @@ in
     pkgs-unstable.go
     pkgs-unstable.lazygit
     pkgs-unstable.signal-desktop
-    pkgs-unstable.zed-editor
     pkgs-unstable.gh
     pkgs-unstable.lunarvim
     pkgs-unstable.galaxy-buds-client
@@ -175,10 +176,11 @@ in
     pkgs-unstable.claude-code
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
-    codex.packages.${system}.codex-rs
+    pkgs-unstable.codex
+    beads-fixed
     wifitui.packages.${system}.default
+    roborev.packages.${system}.default
   ] ++ [
     pkgs-jzila.ollama
-    pkgs-jzila.orca-slicer
   ];
 }

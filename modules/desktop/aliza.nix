@@ -6,6 +6,11 @@
     ../ssh-ca
   ];
 
+  nix.settings.trusted-users = [
+    "root"
+    "john"
+  ];
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
@@ -160,6 +165,7 @@
     # Hardware utilities
     pciutils
     pam_u2f
+    cnijfilter2
     
     # Shell utilities
     bat

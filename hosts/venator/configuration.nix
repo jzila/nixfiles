@@ -32,15 +32,17 @@
     '';
   };
 
-  containers = (import ../../modules/ollama.nix {
-    nixpkgs = nixpkgs-jzila;
-    inherit lib;
-    devices = [
-      "/dev/kfd"
-      "/dev/dri/card1"      # Discrete GPU (RX 6650 XT/6700S/6800S)
-      "/dev/dri/renderD128" # Discrete GPU render node
-    ];
-  }).containers;
+  # TODO: Re-enable once nixpkgs 25.11 container bug is fixed
+  # (boot.isNspawnContainer option was removed but still referenced)
+  # containers = (import ../../modules/ollama.nix {
+  #   nixpkgs = nixpkgs-jzila;
+  #   inherit lib;
+  #   devices = [
+  #     "/dev/kfd"
+  #     "/dev/dri/card1"      # Discrete GPU (RX 6650 XT/6700S/6800S)
+  #     "/dev/dri/renderD128" # Discrete GPU render node
+  #   ];
+  # }).containers;
 
 
   # ASUS Zephyrus video drivers
@@ -50,11 +52,7 @@
   # ASUS Zephyrus graphics hardware acceleration
   hardware.graphics.enable = true;
   hardware.graphics.extraPackages = [
-    pkgs-unstable.amdvlk
     pkgs.rocmPackages.clr.icd
-  ];
-  hardware.graphics.extraPackages32 = [
-    pkgs-unstable.driversi686Linux.amdvlk
   ];
 
 
@@ -76,7 +74,7 @@
     ];
     packages = with pkgs; [
       firefox
-      bitwarden
+      bitwarden-desktop
       yubioath-flutter
       alacritty
     ];

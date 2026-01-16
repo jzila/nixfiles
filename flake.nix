@@ -2,13 +2,13 @@
   description = "John's NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixpkgs-jzila.url = "github:jzila/nixpkgs/jzila/orca-slicer";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
@@ -23,13 +23,18 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    codex = {
-      url = "github:jessfraz/codex/add-github-action-for-nix";
+    beads = {
+      url = "github:steveyegge/beads";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     wifitui = {
       url = "github:shazow/wifitui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    roborev = {
+      url = "github:wesm/roborev";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -57,6 +62,11 @@
         config.rocmSupport = true;
       };
 
+      # Override beads package with correct vendorHash (upstream hash is outdated)
+      beads-fixed = inputs.beads.packages.${system}.default.overrideAttrs (old: {
+        vendorHash = "sha256-YU+bRLVlWtHzJ1QPzcKJ70f+ynp8lMoIeFlm+29BNPE=";
+      });
+
       lib = nixpkgs.lib;
 
       # Common Home Manager configuration
@@ -65,7 +75,7 @@
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable pkgs-jzila;
+          inherit pkgs-unstable pkgs-jzila beads-fixed;
         };
         home-manager.users.john = import ./home/john/home.nix;
       };
