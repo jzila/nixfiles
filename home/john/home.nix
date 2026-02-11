@@ -16,7 +16,6 @@ let
   # Cross-platform packages
   commonPackages = [
     pkgs.just
-    pkgs.kitty
     pkgs.kitty-themes
     pkgs.nerd-fonts.fira-code
     pkgs.jq
@@ -39,6 +38,8 @@ let
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
     pkgs-unstable.codex
+  ] ++ lib.optionals (jzila-derivations != null) [
+    jzila-derivations.packages.${system}.claude-code
   ];
 
   # Linux-only packages
@@ -59,8 +60,6 @@ let
     roborev.packages.${system}.default
   ] ++ lib.optionals (pkgs-jzila != null) [
     pkgs-jzila.ollama
-  ] ++ lib.optionals (jzila-derivations != null) [
-    jzila-derivations.packages.${system}.claude-code
   ]);
 
   # Darwin-only packages
@@ -174,6 +173,12 @@ in
       extraConfig = ''
         zstyle ':completion:*' accept-exact-dirs true
       '';
+    };
+  };
+  programs.kitty = {
+    enable = true;
+    settings = {
+      shell = "tmux new-session";
     };
   };
   programs.tmux = {
