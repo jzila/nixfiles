@@ -1,18 +1,11 @@
-# Shared desktop/workstation configuration module
+# Shared desktop/workstation configuration module (Linux)
 { config, pkgs, pkgs-unstable, lib, ... }:
 
 {
   imports = [
+    ../common/base.nix
     ../ssh-ca
   ];
-
-  nix.settings.trusted-users = [
-    "root"
-    "john"
-  ];
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
 
   # Desktop Environment - KDE Plasma 6
   services.xserver.enable = true;
@@ -104,8 +97,6 @@
 
   # Shell Configuration
   users.defaultUserShell = pkgs.zsh;
-  programs.zsh.enable = true;
-  programs.direnv.enable = true;
 
   # Hardware Security
   services.pcscd.enable = true;
@@ -160,47 +151,36 @@
     magicOrExtension = ''\x7fELF....AI\x02'';
   };
 
-  # System Packages
+  # System Packages (Linux-specific, cross-platform packages are in common/base.nix)
   environment.systemPackages = with pkgs; [
     # Hardware utilities
     pciutils
     pam_u2f
     cnijfilter2
-    
-    # Shell utilities
-    bat
-    neovim
-    wget
-    curl
-    git
-    htop
-    dig
+
+    # NixOS utilities
     home-manager
     appimage-run
-    
+
     # Container utilities
     podman-tui
     dive
     podman-compose
-    
-    # Build utilities
+
+    # Build utilities (Linux-specific)
     nix-prefetch-scripts
-    cmake
-    gnumake
     gcc
     libgcc
-    
+
     # Desktop utilities
     kdePackages.plasma-thunderbolt
     keybase-gui
   ] ++ [
     # Unstable packages
     pkgs-unstable.zsa-udev-rules
-    pkgs-unstable.devenv
   ];
 
-  # Nix Configuration
-  nix.settings.experimental-features = "nix-command flakes";
+  # Nix garbage collection (Linux systemd timer syntax)
   nix.gc = {
     automatic = true;
     dates = "Tue *-*-* 03:15:00";

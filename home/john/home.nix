@@ -1,16 +1,80 @@
-{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, jzila-derivations, codex, beads-fixed, wifitui, roborev, ... }:
+{ config, pkgs, pkgs-unstable, lib, nix-vscode-extensions, isLinux, isDarwin, ... }@inputs:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  homeDir = if isDarwin then "/Users/john" else "/home/john";
+
   vscode-extensions = nix-vscode-extensions.extensions.${system};
+
+  # Linux-only inputs (may be null on darwin)
+  pkgs-jzila = inputs.pkgs-jzila or null;
+  beads-fixed = inputs.beads-fixed or null;
+  wifitui = inputs.wifitui or null;
+  roborev = inputs.roborev or null;
+  jzila-derivations = inputs.jzila-derivations or null;
+
+  # Cross-platform packages
+  commonPackages = [
+    pkgs.just
+    pkgs.kitty
+    pkgs.kitty-themes
+    pkgs.nerd-fonts.fira-code
+    pkgs.jq
+    pkgs.fzf
+    pkgs.vlc
+    pkgs.lmodern
+    pkgs.tree
+    pkgs.ripgrep
+    pkgs.openssl
+    pkgs.awscli2
+    pkgs.zed-editor
+  ] ++ [
+    pkgs-unstable.python3
+    pkgs-unstable.nodejs_22
+    pkgs-unstable.bun
+    pkgs-unstable.yarn
+    pkgs-unstable.go
+    pkgs-unstable.lazygit
+    pkgs-unstable.gh
+    pkgs-unstable.lunarvim
+    pkgs-unstable.gemini-cli
+    pkgs-unstable.step-cli
+    pkgs-unstable.codex
+  ];
+
+  # Linux-only packages
+  linuxPackages = lib.optionals isLinux ([
+    pkgs.kdePackages.skanpage
+    pkgs.gpu-screen-recorder
+    pkgs.gpu-screen-recorder-gtk
+    pkgs-unstable.earthly
+    pkgs-unstable.signal-desktop
+    pkgs-unstable.galaxy-buds-client
+    pkgs-unstable.google-chrome
+  ] ++ lib.optionals (beads-fixed != null) [
+    beads-fixed
+  ] ++ lib.optionals (wifitui != null) [
+    wifitui.packages.${system}.default
+  ] ++ lib.optionals (roborev != null) [
+    roborev.packages.${system}.default
+  ] ++ lib.optionals (pkgs-jzila != null) [
+    pkgs-jzila.ollama
+  ] ++ lib.optionals (jzila-derivations != null) [
+    jzila-derivations.packages.${system}.claude-code
+  ]);
+
+  # Darwin-only packages
+  darwinPackages = lib.optionals isDarwin [
+    # macOS-specific packages can be added here
+  ];
 in
 {
-  imports = [
+  imports = lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
 
   home.username = "john";
-  home.homeDirectory = "/home/john";
+  home.homeDirectory = homeDir;
   home.stateVersion = "23.11";
 
   # home-manager should manage itself.
@@ -95,11 +159,11 @@ in
     initContent = ''
       ZSH_AUTOSUGGEST_STRATEGY=(history)
 
-      . /home/john/repos/dotfiles/zshrc
+      . ${homeDir}/repos/dotfiles/zshrc
     '';
     oh-my-zsh = {
       enable  = true;
-      custom  = "/home/john/repos/dotfiles/zsh_custom";
+      custom  = "${homeDir}/repos/dotfiles/zsh_custom";
       theme   = "jzila";
       plugins = [
         "git"
@@ -123,7 +187,7 @@ in
       tmuxPlugins.battery
     ];
     extraConfig = ''
-      source-file /home/john/repos/dotfiles/tmux.conf
+      source-file ${homeDir}/repos/dotfiles/tmux.conf
     '';
   };
   programs.vscode = {
@@ -146,44 +210,5 @@ in
       }
     '';
   };
-  home.packages = [
-    pkgs.just
-    pkgs.kitty
-    pkgs.kitty-themes
-    pkgs.nerd-fonts.fira-code
-    pkgs.jq
-    pkgs.fzf
-    pkgs.kdePackages.skanpage
-    pkgs.gpu-screen-recorder
-    pkgs.gpu-screen-recorder-gtk
-    pkgs.vlc
-    pkgs.lmodern
-    pkgs.tree
-    pkgs.ripgrep
-    pkgs.openssl
-    pkgs.awscli2
-    pkgs.zed-editor
-  ] ++ [
-    pkgs-unstable.python3
-    pkgs-unstable.nodejs_22
-    pkgs-unstable.bun
-    pkgs-unstable.yarn
-    pkgs-unstable.earthly
-    pkgs-unstable.go
-    pkgs-unstable.lazygit
-    pkgs-unstable.signal-desktop
-    pkgs-unstable.gh
-    pkgs-unstable.lunarvim
-    pkgs-unstable.galaxy-buds-client
-    pkgs-unstable.google-chrome
-    pkgs-unstable.gemini-cli
-    pkgs-unstable.step-cli
-    pkgs-unstable.codex
-    beads-fixed
-    wifitui.packages.${system}.default
-    roborev.packages.${system}.default
-  ] ++ [
-    pkgs-jzila.ollama
-    jzila-derivations.packages.${system}.claude-code
-  ];
+  home.packages = commonPackages ++ linuxPackages ++ darwinPackages;
 }
