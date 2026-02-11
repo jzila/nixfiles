@@ -178,7 +178,7 @@ in
   programs.kitty = {
     enable = true;
     settings = {
-      shell = "tmux new-session";
+      shell = "${pkgs.tmux}/bin/tmux new-session";
     };
   };
   programs.tmux = {
