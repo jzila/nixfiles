@@ -21,6 +21,9 @@
     "alacritty"
   ];
 
+  # Match the GID used by the existing Nix installation
+  ids.gids.nixbld = 350;
+
   # Used for backwards compatibility
   system.stateVersion = 4;
 }

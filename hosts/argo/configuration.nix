@@ -86,7 +86,7 @@ in
     ];
     packages = with pkgs; [
       firefox
-      bitwarden
+      bitwarden-desktop
       yubioath-flutter
       alacritty
     ];
