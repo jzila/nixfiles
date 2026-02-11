@@ -28,17 +28,6 @@
     };
   };
 
-  # Homebrew for GUI apps not in nixpkgs
-  homebrew = {
-    enable = true;
-    onActivation.cleanup = "zap";
-    casks = [
-      "google-chrome"
-      "signal"
-      "firefox"
-    ];
-  };
-
   # Tailscale VPN
   services.tailscale.enable = true;
 

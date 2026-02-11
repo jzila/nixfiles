@@ -6,20 +6,13 @@
 
   networking.hostName = "macbook";
 
-  # Required for user-scoped options (homebrew, system.defaults, etc.)
+  # Required for user-scoped options (system.defaults, etc.)
   system.primaryUser = "john";
 
   users.users.john = {
     name = "john";
     home = "/Users/john";
   };
-
-  # Additional homebrew casks for this machine
-  homebrew.casks = [
-    "visual-studio-code"
-    "kitty"
-    "alacritty"
-  ];
 
   # Match the GID used by the existing Nix installation
   ids.gids.nixbld = 350;
