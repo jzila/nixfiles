@@ -65,7 +65,7 @@ let
 
   # Darwin-only packages
   darwinPackages = lib.optionals isDarwin [
-    # macOS-specific packages can be added here
+    pkgs.firefox-bin
   ];
 in
 {
