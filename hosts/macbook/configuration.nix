@@ -6,6 +6,9 @@
 
   networking.hostName = "macbook";
 
+  # Required for user-scoped options (homebrew, system.defaults, etc.)
+  system.primaryUser = "john";
+
   users.users.john = {
     name = "john";
     home = "/Users/john";

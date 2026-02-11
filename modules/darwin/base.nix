@@ -43,7 +43,7 @@
   services.tailscale.enable = true;
 
   # Security - touch ID for sudo
-  security.pam.enableSudoTouchIdAuth = true;
+  security.pam.services.sudo_local.touchIdAuth = true;
 
   # macOS-specific system packages
   environment.systemPackages = with pkgs; [
