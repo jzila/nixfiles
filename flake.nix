@@ -52,6 +52,10 @@
       url = "github:jzila/nix-derivations";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    mac-app-util = {
+      url = "github:hraban/mac-app-util";
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, home-manager, home-manager-unstable, nix-darwin, ... }@inputs:
@@ -109,6 +113,9 @@
         imports = [ home-manager-unstable.darwinModules.home-manager ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
+        home-manager.sharedModules = [
+          inputs.mac-app-util.homeManagerModules.default
+        ];
         home-manager.extraSpecialArgs = inputs // {
           inherit pkgs-unstable isLinux isDarwin;
           # Linux-only inputs are not available on darwin
@@ -171,7 +178,10 @@
         macbook = mkDarwin {
           system = "aarch64-darwin";
           hostPath = ./hosts/macbook/configuration.nix;
-          extraModules = [ (homeManagerDarwinModule "aarch64-darwin") ];
+          extraModules = [
+            inputs.mac-app-util.darwinModules.default
+            (homeManagerDarwinModule "aarch64-darwin")
+          ];
         };
       };
 
