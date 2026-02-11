@@ -24,7 +24,7 @@
     };
 
     beads = {
-      url = "github:steveyegge/beads";
+      url = "github:steveyegge/beads/v0.49.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -35,6 +35,11 @@
 
     roborev = {
       url = "github:wesm/roborev";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    jzila-derivations = {
+      url = "github:jzila/nix-derivations";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

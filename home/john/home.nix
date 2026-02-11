@@ -1,4 +1,4 @@
-{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, codex, beads-fixed, wifitui, roborev, ... }:
+{ config, pkgs, pkgs-unstable, pkgs-jzila, nix-vscode-extensions, jzila-derivations, codex, beads-fixed, wifitui, roborev, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -22,32 +22,30 @@ in
 
   programs.git = {
     enable = true;
-    userEmail = "john@jzila.com";
-    userName = "John Zila";
-    aliases = {
-      ci = "commit";
-      st = "status";
-      co = "checkout";
-      oneline = "log --pretty=oneline";
-      br = "branch";
-      la = "log --pretty=\"format:%ad %h (%an): %s\" --date=short";
-      lgthis = "log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
-      lgall = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
-      lgall2 = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit";
-      diff2 = "diff --ignore-all-space --patience";
-      lg = "lg1";
-      fixup = "commit --amend -C HEAD";
-      blast = "for-each-ref --sort=-committerdate refs/heads/ --format=\"%(committerdate:relative)%09%(refname:short)\"";
-      fix = "diff --name-only --relative -z --diff-filter=U | uniq | xargs -0 \${EDITOR}";
-    };
-    delta = {
-      enable = true;
-      options = {
-        line-numbers = true;
-        side-by-side = true;
+    ignores = [
+      ".vscode/**"
+    ];
+    settings = {
+      user = {
+        email = "john@jzila.com";
+        name = "John Zila";
       };
-    };
-    extraConfig = {
+      alias = {
+        ci = "commit";
+        st = "status";
+        co = "checkout";
+        oneline = "log --pretty=oneline";
+        br = "branch";
+        la = "log --pretty=\"format:%ad %h (%an): %s\" --date=short";
+        lgthis = "log --graph --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
+        lgall = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(bold white)%an — %C(reset)%C(white)%s%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative";
+        lgall2 = "log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit";
+        diff2 = "diff --ignore-all-space --patience";
+        lg = "lg1";
+        fixup = "commit --amend -C HEAD";
+        blast = "for-each-ref --sort=-committerdate refs/heads/ --format=\"%(committerdate:relative)%09%(refname:short)\"";
+        fix = "diff --name-only --relative -z --diff-filter=U | uniq | xargs -0 \${EDITOR}";
+      };
       core = {
         editor = "nvim";
       };
@@ -69,9 +67,14 @@ in
         enabled = "true";
       };
     };
-    ignores = [
-      ".vscode/**"
-    ];
+  };
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      line-numbers = true;
+      side-by-side = true;
+    };
   };
 
   programs.neovim = {
@@ -173,7 +176,6 @@ in
     pkgs-unstable.lunarvim
     pkgs-unstable.galaxy-buds-client
     pkgs-unstable.google-chrome
-    pkgs-unstable.claude-code
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
     pkgs-unstable.codex
@@ -182,5 +184,6 @@ in
     roborev.packages.${system}.default
   ] ++ [
     pkgs-jzila.ollama
+    jzila-derivations.packages.${system}.claude-code
   ];
 }
