@@ -21,7 +21,6 @@ let
     pkgs.nerd-fonts.fira-code
     pkgs.jq
     pkgs.fzf
-    pkgs.vlc
     pkgs.lmodern
     pkgs.tree
     pkgs.ripgrep
@@ -44,6 +43,7 @@ let
 
   # Linux-only packages
   linuxPackages = lib.optionals isLinux ([
+    pkgs.vlc
     pkgs.kdePackages.skanpage
     pkgs.gpu-screen-recorder
     pkgs.gpu-screen-recorder-gtk

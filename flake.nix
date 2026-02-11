@@ -12,6 +12,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    home-manager-unstable = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+
     nix-darwin = {
       url = "github:LnL7/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
@@ -49,7 +54,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, home-manager, nix-darwin, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nixpkgs-jzila, home-manager, home-manager-unstable, nix-darwin, ... }@inputs:
     let
       # Helper to create pkgs for a given system
       mkPkgs = system: import nixpkgs {
@@ -101,7 +106,7 @@
         isLinux = false;
         isDarwin = true;
       in {
-        imports = [ home-manager.darwinModules.home-manager ];
+        imports = [ home-manager-unstable.darwinModules.home-manager ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = inputs // {
