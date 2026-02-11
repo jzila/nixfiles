@@ -31,8 +31,9 @@
   # Tailscale VPN
   services.tailscale.enable = true;
 
-  # Security - touch ID for sudo
+  # Security - touch ID for sudo (reattach enables it inside tmux)
   security.pam.services.sudo_local.touchIdAuth = true;
+  security.pam.services.sudo_local.reattach = true;
 
   # macOS-specific system packages
   environment.systemPackages = with pkgs; [

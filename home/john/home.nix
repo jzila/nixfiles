@@ -180,8 +180,8 @@ in
     settings = {
       shell = "${pkgs.tmux}/bin/tmux new-session";
     } // lib.optionalAttrs isDarwin {
-      font_size = 14;
-      window_padding_width = 5;
+      font_size = 12;
+      window_padding_width = 2;
     };
   };
   programs.tmux = {
