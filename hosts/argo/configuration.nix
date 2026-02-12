@@ -1,9 +1,8 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, nixpkgs-jzila, ... }:
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, ... }:
 let
   ollama = import ../../modules/ollama.nix {
-    inherit lib;
-    nixpkgs = nixpkgs-jzila;
+    inherit lib nixpkgs;
     listenHost = "0.0.0.0";
     openFirewallOnHost = true;
     gfxOverride = "11.5.1";
@@ -62,11 +61,7 @@ in
   # Enable hardware graphics acceleration
   hardware.graphics.enable = true;
   hardware.graphics.extraPackages = [
-    pkgs-unstable.amdvlk
     pkgs.rocmPackages.clr.icd
-  ];
-  hardware.graphics.extraPackages32 = [
-    pkgs-unstable.driversi686Linux.amdvlk
   ];
 
   # Power management - use power-profiles-daemon for desktop (not TLP)
