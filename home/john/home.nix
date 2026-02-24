@@ -13,8 +13,12 @@ let
   roborev = inputs.roborev or null;
   jzila-derivations = inputs.jzila-derivations or null;
 
-  # Cross-platform packages
+  jzvim = inputs.jzvim or null;
+  vimdiff = pkgs.writeShellScriptBin "vimdiff" ''exec nvim -d "$@"'';
+
   commonPackages = [
+    jzvim.packages.${system}.default
+    vimdiff
     pkgs.just
     pkgs.kitty-themes
     pkgs.nerd-fonts.fira-code
@@ -70,7 +74,6 @@ let
 in
 {
   imports = [
-    ./vim.nix
     ./zsh.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
@@ -178,6 +181,8 @@ in
     ];
   };
   home.sessionVariables = {
+    EDITOR = "nvim";
+    VISUAL = "nvim";
     OLLAMA_HOST = "127.0.0.1:11434";
 
     GREP_COLOR = "1;31";

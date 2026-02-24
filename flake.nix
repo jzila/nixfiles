@@ -33,8 +33,8 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    nixvim = {
-      url = "github:nix-community/nixvim";
+    jzvim = {
+      url = "path:./nixvim";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
@@ -103,9 +103,7 @@
         imports = [ home-manager.nixosModules.home-manager ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.sharedModules = [
-          inputs.nixvim.homeModules.nixvim
-        ];
+        home-manager.sharedModules = [];
         home-manager.extraSpecialArgs = inputs // {
           inherit pkgs-unstable pkgs-jzila beads-fixed isLinux isDarwin;
         };
@@ -123,7 +121,6 @@
         home-manager.useUserPackages = true;
         home-manager.sharedModules = [
           inputs.mac-app-util.homeManagerModules.default
-          inputs.nixvim.homeModules.nixvim
         ];
         home-manager.extraSpecialArgs = inputs // {
           inherit pkgs-unstable isLinux isDarwin;
