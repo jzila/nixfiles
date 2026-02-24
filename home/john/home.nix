@@ -13,11 +13,11 @@ let
   roborev = inputs.roborev or null;
   jzila-derivations = inputs.jzila-derivations or null;
 
-  jzvim = inputs.jzvim or null;
+  nvim = inputs.nvim;
   vimdiff = pkgs.writeShellScriptBin "vimdiff" ''exec nvim -d "$@"'';
 
   commonPackages = [
-    jzvim.packages.${system}.default
+    nvim
     vimdiff
     pkgs.just
     pkgs.kitty-themes

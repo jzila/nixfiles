@@ -33,8 +33,8 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    jzvim = {
-      url = "path:./nixvim";
+    nixvim = {
+      url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
@@ -92,20 +92,26 @@
 
       lib = nixpkgs.lib;
 
+      # Build standalone NixVim package from shared config
+      mkNvim = system: inputs.nixvim.legacyPackages.${system}.makeNixvimWithModule {
+        inherit system;
+        module = import ./nixvim/config;
+      };
+
       # Common Home Manager configuration for NixOS
       homeManagerModule = system: let
         pkgs-unstable = mkPkgsUnstable system;
         pkgs-jzila = mkPkgsJzila system;
         beads-fixed = mkBeadsFixed system;
+        nvim = mkNvim system;
         isLinux = true;
         isDarwin = false;
       in {
         imports = [ home-manager.nixosModules.home-manager ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.sharedModules = [];
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable pkgs-jzila beads-fixed isLinux isDarwin;
+          inherit pkgs-unstable pkgs-jzila beads-fixed nvim isLinux isDarwin;
         };
         home-manager.users.john = import ./home/john/home.nix;
       };
@@ -113,6 +119,7 @@
       # Home Manager configuration for nix-darwin
       homeManagerDarwinModule = system: let
         pkgs-unstable = mkPkgsUnstable system;
+        nvim = mkNvim system;
         isLinux = false;
         isDarwin = true;
       in {
@@ -123,7 +130,7 @@
           inputs.mac-app-util.homeManagerModules.default
         ];
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable isLinux isDarwin;
+          inherit pkgs-unstable nvim isLinux isDarwin;
           # Linux-only inputs are not available on darwin
           pkgs-jzila = null;
           beads-fixed = null;
