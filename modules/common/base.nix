@@ -1,6 +1,6 @@
 # Cross-platform base configuration module
 # Shared settings between NixOS and nix-darwin
-{ config, pkgs, pkgs-unstable, lib, ... }:
+{ config, pkgs, pkgs-unstable, devenv, lib, ... }:
 
 {
   nix.settings.trusted-users = [
@@ -10,6 +10,8 @@
 
   # Enable flakes and nix command
   nix.settings.experimental-features = "nix-command flakes";
+  nix.settings.extra-substituters = [ "https://devenv.cachix.org" ];
+  nix.settings.extra-trusted-public-keys = [ "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=" ];
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
@@ -33,7 +35,7 @@
     cmake
     gnumake
   ] ++ [
-    # Unstable packages
-    pkgs-unstable.devenv
+    # From cachix/devenv flake
+    devenv.packages.${pkgs.stdenv.hostPlatform.system}.devenv
   ];
 }

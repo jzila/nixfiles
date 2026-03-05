@@ -58,6 +58,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    devenv = {
+      url = "github:cachix/devenv/latest";
+    };
+
     mac-app-util = {
       url = "github:hraban/mac-app-util";
     };
