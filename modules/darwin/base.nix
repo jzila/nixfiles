@@ -29,6 +29,9 @@
     };
   };
 
+  # Rosetta 2 (required for x86_64 Linux containers on Apple silicon)
+  system.rosetta.enable = true;
+
   # Tailscale VPN
   services.tailscale.enable = true;
 
