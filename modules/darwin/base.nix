@@ -2,7 +2,7 @@
 { config, pkgs, pkgs-unstable, lib, ... }:
 
 {
-  imports = [ ../common/base.nix ];
+  imports = [ ../common/base.nix ./rosetta.nix ];
 
   # Nix garbage collection (launchd syntax)
   nix.gc = {
