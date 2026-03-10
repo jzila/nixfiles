@@ -14,7 +14,8 @@
   # macOS system defaults
   system.defaults = {
     dock = {
-      autohide = false;
+      autohide = true;
+      magnification = true;
       show-recents = false;
     };
     finder = {
