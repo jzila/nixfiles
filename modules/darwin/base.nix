@@ -2,7 +2,7 @@
 { config, pkgs, pkgs-unstable, lib, ... }:
 
 {
-  imports = [ ../common/base.nix ];
+  imports = [ ../common/base.nix ./rosetta.nix ];
 
   # Nix garbage collection (launchd syntax)
   nix.gc = {
@@ -28,6 +28,9 @@
       KeyRepeat = 2;
     };
   };
+
+  # Rosetta 2 (required for x86_64 Linux containers on Apple silicon)
+  system.rosetta.enable = true;
 
   # Tailscale VPN
   services.tailscale.enable = true;
