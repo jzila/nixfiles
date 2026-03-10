@@ -44,13 +44,13 @@ in {
       };
     in ''
       echo "Checking Apple container CLI..."
-      installed_version=""
+      needs_install=true
       if [ -x /usr/local/bin/container ]; then
-        installed_version=$(/usr/local/bin/container version 2>/dev/null || true)
+        if /usr/local/bin/container system version 2>/dev/null | grep -q "${cfg.version}"; then
+          needs_install=false
+        fi
       fi
-      if echo "$installed_version" | grep -q "${cfg.version}"; then
-        echo "Apple container CLI ${cfg.version} already installed."
-      else
+      if [ "$needs_install" = true ]; then
         echo "Installing Apple container CLI ${cfg.version}..."
         /usr/local/bin/container system stop 2>/dev/null || true
         temp_dir=$(mktemp -d)
@@ -58,12 +58,9 @@ in {
         (cd /usr/local && pax -rz -f "$temp_dir"/Payload)
         rm -rf "$temp_dir"
         echo "Apple container CLI ${cfg.version} installed."
-      fi
-
-      # Ensure the system service is running
-      if ! /usr/local/bin/container system info &>/dev/null; then
-        echo "Starting Apple container system service..."
-        /usr/local/bin/container system start
+        echo "Run 'container system start' to start the system service."
+      else
+        echo "Apple container CLI ${cfg.version} already installed."
       fi
     '';
   };
