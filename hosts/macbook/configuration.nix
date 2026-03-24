@@ -2,7 +2,13 @@
 { config, pkgs, pkgs-unstable, lib, ... }:
 
 {
-  imports = [ ../../modules/darwin/base.nix ];
+  imports = [
+    ../../modules/darwin/base.nix
+    ../../modules/darwin/apple-container.nix
+  ];
+
+  # Apple container CLI for running Linux containers as lightweight VMs
+  services.apple-container.enable = true;
 
   networking.hostName = "macbook";
 
