@@ -39,6 +39,14 @@
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = true;
 
+  # Disable Spotlight indexing on /nix to prevent old package versions
+  # from appearing in Launchpad and desktop search results
+  system.activationScripts.postActivation.text = ''
+    if mdutil -s /nix 2>/dev/null | grep -q "Indexing enabled"; then
+      mdutil -i off -d /nix
+    fi
+  '';
+
   # macOS-specific system packages
   environment.systemPackages = with pkgs; [
     # macOS utilities
