@@ -30,6 +30,7 @@ let
     pkgs.openssl
     pkgs.awscli2
     pkgs.zed-editor
+    pkgs.jre_minimal
   ] ++ [
     pkgs-unstable.python3
     pkgs-unstable.nodejs_22
@@ -150,7 +151,40 @@ in
   programs.kitty = {
     enable = true;
     settings = {
-      shell = "${pkgs.tmux}/bin/tmux new-session";
+      shell = "tmux";
+
+      hide_window_decorations = "no";
+      background_opacity = "0.85";
+      background_blur = 15;
+
+      font_family = "FiraCode";
+      bold_font = "auto";
+      italic_font = "auto";
+      bold_italic_font = "auto";
+      font_size = 11.0;
+
+      # Molokai
+      background = "#121212";
+      foreground = "#bbbbbb";
+      cursor = "#bbbbbb";
+      selection_background = "#b4d5ff";
+      selection_foreground = "#121212";
+      color0 = "#121212";
+      color8 = "#545454";
+      color1 = "#fa2573";
+      color9 = "#f5669c";
+      color2 = "#97e123";
+      color10 = "#b0e05e";
+      color3 = "#dfd460";
+      color11 = "#fef26c";
+      color4 = "#0f7fcf";
+      color12 = "#00afff";
+      color5 = "#8700ff";
+      color13 = "#af87ff";
+      color6 = "#42a7cf";
+      color14 = "#50cdfe";
+      color7 = "#bbbbbb";
+      color15 = "#ffffff";
     } // lib.optionalAttrs isDarwin {
       font_size = 12;
       window_padding_width = 2;
