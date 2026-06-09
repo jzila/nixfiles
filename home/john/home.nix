@@ -151,7 +151,9 @@ in
   programs.kitty = {
     enable = true;
     settings = {
-      shell = "tmux";
+      # Absolute path so kitty finds tmux even when launched from the macOS
+      # Dock/Finder/Spotlight, where the GUI PATH excludes the Nix profile dirs.
+      shell = "${pkgs.tmux}/bin/tmux";
 
       hide_window_decorations = "no";
       background_opacity = "0.85";
