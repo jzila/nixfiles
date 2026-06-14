@@ -5,6 +5,7 @@
   imports = [
     ../../modules/darwin/base.nix
     ../../modules/darwin/apple-container.nix
+    ../../modules/darwin/power.nix
   ];
 
   # Apple container CLI for running Linux containers as lightweight VMs
