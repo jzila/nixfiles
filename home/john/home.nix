@@ -198,12 +198,60 @@ in
     clock24 = true;
     historyLimit = 10000;
     terminal = "screen-256color";
+    focusEvents = true;
+    shortcut = "a";
+    keyMode = "vi";
+    baseIndex = 1;
+    escapeTime = 0;
+    aggressiveResize = true;
+    customPaneNavigationAndResize = true;
     plugins = with pkgs; [
       tmuxPlugins.cpu
       tmuxPlugins.battery
     ];
     extraConfig = ''
-      source-file ${homeDir}/repos/dotfiles/tmux.conf
+      # https://github.com/seebi/tmux-colors-solarized
+      set-option -g status-bg colour235
+      set-option -g status-fg colour136
+
+      # Window title colors
+      set -g window-status-style fg=colour244,bg=default
+      set -g window-status-current-style fg=black,bg=colour166
+
+      # Pane number display
+      set-option -g display-panes-active-colour colour33
+      set-option -g display-panes-colour colour166
+
+      # Clock
+      set-window-option -g clock-mode-colour green
+
+      # Status bar
+      set -g status-left ""
+      set -g status-interval 1
+      set -g status-right '#[fg=white,bg=default]%a %l:%M:%S#[default] #[fg=cyan]%Y-%m-%d #{battery_icon_status}:#{battery_percentage}'
+
+      # Window splits open in the current path
+      bind-key v split-window -h -c "#{pane_current_path}"
+      bind-key b split-window -c "#{pane_current_path}"
+      bind-key '"' split-window -c "#{pane_current_path}"
+      bind-key % split-window -h -c "#{pane_current_path}"
+      bind-key c new-window -c "#{pane_current_path}"
+
+      # Vi copy-mode selection
+      bind -Tcopy-mode-vi v send -X begin-selection
+      bind -Tcopy-mode-vi y send -X copy-selection
+
+      # main-horizontal layout, 60% height for main pane
+      bind m set-window-option main-pane-height 60\; select-layout main-horizontal
+
+      # Named new window
+      bind-key C command-prompt -p "Name of new window: " "new-window -n '%%'"
+
+      # Reload config
+      bind r source-file ~/.config/tmux/tmux.conf \; display-message "Config reloaded..."
+
+      # Auto window rename
+      set-window-option -g automatic-rename on
     '';
   };
   programs.vscode = {
