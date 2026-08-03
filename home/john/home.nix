@@ -41,11 +41,11 @@ let
     pkgs-unstable.gh
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
-    pkgs-unstable.codex
   ] ++ [
     pkgs.postgresql
   ] ++ lib.optionals (jzila-derivations != null) [
     jzila-derivations.packages.${system}.claude-code
+    jzila-derivations.packages.${system}.codex
   ];
 
   # Linux-only packages
