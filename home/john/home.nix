@@ -16,6 +16,17 @@ let
   nvim = inputs.nvim;
   vimdiff = pkgs.writeShellScriptBin "vimdiff" ''exec nvim -d "$@"'';
 
+  # Stable nixpkgs, imported explicitly because `pkgs` here is the host package
+  # set: stable on NixOS, but unstable on darwin (nix-darwin's nixpkgs follows
+  # nixpkgs-unstable). google-cloud-sdk needs the stable one. Its
+  # withExtraComponents build always runs locally, and with the unstable version
+  # the postInstall `gcloud components list` step aborts on Apple Silicon. Same
+  # rationale as the gcloud pin in watt's platform/devenv.nix.
+  pkgs-stable = import inputs.nixpkgs {
+    inherit system;
+    config.allowUnfree = true;
+  };
+
   commonPackages = [
     nvim
     vimdiff
@@ -29,6 +40,13 @@ let
     pkgs.ripgrep
     pkgs.openssl
     pkgs.awscli2
+    # gcloud with gke-gcloud-auth-plugin and kubectl bundled as components, so
+    # `gcloud container clusters get-credentials` works without extra setup.
+    # Pinned to the stable nixpkgs (see pkgs-stable above).
+    (pkgs-stable.google-cloud-sdk.withExtraComponents [
+      pkgs-stable.google-cloud-sdk.components.gke-gcloud-auth-plugin
+      pkgs-stable.google-cloud-sdk.components.kubectl
+    ])
     pkgs.zed-editor
     pkgs.jre_minimal
   ] ++ [
