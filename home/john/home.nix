@@ -64,6 +64,8 @@ let
   ] ++ lib.optionals (jzila-derivations != null) [
     jzila-derivations.packages.${system}.claude-code
     jzila-derivations.packages.${system}.codex
+  ] ++ lib.optionals (roborev != null) [
+    roborev.packages.${system}.default
   ];
 
   # Linux-only packages
@@ -80,8 +82,6 @@ let
     beads-fixed
   ] ++ lib.optionals (wifitui != null) [
     wifitui.packages.${system}.default
-  ] ++ lib.optionals (roborev != null) [
-    roborev.packages.${system}.default
   ] ++ lib.optionals (pkgs-jzila != null) [
     pkgs-jzila.ollama
   ]);

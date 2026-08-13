@@ -780,11 +780,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786388357,
-        "narHash": "sha256-CxgztszHvbWczL5Ohi8qC2MUaBEVEtsLcoGrg/4TJew=",
+        "lastModified": 1786625875,
+        "narHash": "sha256-8a4dXkcOKbV3nFUSyNMCk5lCYEisVDNUKnjlITZZcEU=",
         "owner": "wesm",
         "repo": "roborev",
-        "rev": "88a1eef3d28a0a6276c8a475bf09de613c9318cb",
+        "rev": "94de16d907037469639fa6ca4bbb8eb7e831aeea",
         "type": "github"
       },
       "original": {
