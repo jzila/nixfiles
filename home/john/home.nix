@@ -106,6 +106,14 @@ in
   programs.home-manager.enable = true;
   programs.direnv.enable = true;
 
+  # Python packaging/interpreter manager. uv downloads its own interpreters,
+  # which are not Nix-linked; on the NixOS hosts that needs the nix-ld shim
+  # enabled in modules/desktop/aliza.nix.
+  programs.uv = {
+    enable = true;
+    package = pkgs-unstable.uv;
+  };
+
   # fonts
   fonts.fontconfig.enable = true;
 

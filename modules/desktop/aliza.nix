@@ -151,6 +151,27 @@
     magicOrExtension = ''\x7fELF....AI\x02'';
   };
 
+  # Dynamic loader shim for prebuilt non-Nix binaries: uv's managed CPython
+  # builds and manylinux wheels with compiled extensions expect
+  # /lib64/ld-linux-x86-64.so.2 and FHS library paths, neither of which NixOS
+  # has. Libraries listed here land in NIX_LD_LIBRARY_PATH.
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib
+      zlib
+      openssl
+      libffi
+      bzip2
+      xz
+      sqlite
+      ncurses
+      readline
+      libxml2
+      glib
+    ];
+  };
+
   # System Packages (Linux-specific, cross-platform packages are in common/base.nix)
   environment.systemPackages = with pkgs; [
     # Hardware utilities
