@@ -94,6 +94,7 @@ in
 {
   imports = [
     ./zsh.nix
+    ./kitty-bare.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
