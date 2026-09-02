@@ -47,7 +47,6 @@ let
       pkgs-stable.google-cloud-sdk.components.gke-gcloud-auth-plugin
       pkgs-stable.google-cloud-sdk.components.kubectl
     ])
-    pkgs.zed-editor
     pkgs.jre_minimal
   ] ++ [
     pkgs-unstable.python3
@@ -70,6 +69,8 @@ let
 
   # Linux-only packages
   linuxPackages = lib.optionals isLinux ([
+    # Cached on x86_64-linux, unlike the darwin build (see darwinPackages).
+    pkgs.zed-editor
     pkgs.vlc
     pkgs.kdePackages.skanpage
     pkgs.gpu-screen-recorder
@@ -89,6 +90,10 @@ let
   # Darwin-only packages
   darwinPackages = lib.optionals isDarwin [
     pkgs.firefox-bin
+    # Zed from the official signed release .dmg. nixpkgs builds it from source
+    # and Hydra's aarch64-darwin queue lags the channel, so pkgs.zed-editor
+    # here means compiling the whole Rust workspace locally on every bump.
+    (pkgs.callPackage ../../pkgs/zed-editor-bin { })
   ];
 in
 {

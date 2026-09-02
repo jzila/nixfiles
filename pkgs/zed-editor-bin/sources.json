@@ -1,0 +1,13 @@
+{
+  "version": "1.17.2",
+  "systems": {
+    "aarch64-darwin": {
+      "url": "https://github.com/zed-industries/zed/releases/download/v1.17.2/Zed-aarch64.dmg",
+      "hash": "sha256-gguuh+RAVtWZJNVDwwVA98VtNLnHqBaQP1sdopIU44k="
+    },
+    "x86_64-darwin": {
+      "url": "https://github.com/zed-industries/zed/releases/download/v1.17.2/Zed-x86_64.dmg",
+      "hash": "sha256-dW8bfHsjQAwdYcys+j/LPf1tCD9m6efWfPlnthLVz5E="
+    }
+  }
+}
