@@ -171,10 +171,16 @@
       lib.homeManagerDarwinModule = homeManagerDarwinModule;
 
       # Custom packages, exposed so they can be built and tested directly:
-      #   nix build .#zed-editor-bin
-      packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" ] (system: {
-        zed-editor-bin = (mkPkgsUnstable system).callPackage ./pkgs/zed-editor-bin { };
-      });
+      #   nix build .#opencode-bin
+      packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
+        (system:
+          let pkgs-unstable = mkPkgsUnstable system;
+          in {
+            opencode-bin = pkgs-unstable.callPackage ./pkgs/opencode-bin { };
+          } // lib.optionalAttrs (lib.hasSuffix "darwin" system) {
+            # Zed only publishes release builds for macOS; Linux uses pkgs.zed-editor.
+            zed-editor-bin = pkgs-unstable.callPackage ./pkgs/zed-editor-bin { };
+          });
 
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)

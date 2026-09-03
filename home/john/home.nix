@@ -58,6 +58,9 @@ let
     pkgs-unstable.gh
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
+    # opencode from the official release archive. nixpkgs has to re-pin a bun
+    # dependency FOD on every bump, so pkgs.opencode trails the upstream tag.
+    (pkgs-unstable.callPackage ../../pkgs/opencode-bin { })
   ] ++ [
     pkgs.postgresql
   ] ++ lib.optionals (jzila-derivations != null) [
