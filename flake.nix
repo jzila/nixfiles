@@ -48,11 +48,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    roborev = {
-      url = "github:wesm/roborev";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     jzila-derivations = {
       url = "github:jzila/nix-derivations";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -177,6 +172,7 @@
           let pkgs-unstable = mkPkgsUnstable system;
           in {
             opencode-bin = pkgs-unstable.callPackage ./pkgs/opencode-bin { };
+            roborev-bin = pkgs-unstable.callPackage ./pkgs/roborev-bin { };
           } // lib.optionalAttrs (lib.hasSuffix "darwin" system) {
             # Zed only publishes release builds for macOS; Linux uses pkgs.zed-editor.
             zed-editor-bin = pkgs-unstable.callPackage ./pkgs/zed-editor-bin { };
