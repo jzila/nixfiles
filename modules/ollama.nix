@@ -40,9 +40,10 @@
       ];
       networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
       services.ollama = {
+        # ollama-rocm is what selects the ROCm build; the separate
+        # services.ollama.acceleration option that used to do it is gone.
         package = pkgs.ollama-rocm;
         enable = true;
-        acceleration = "rocm";
         rocmOverrideGfx = gfxOverride;
         host = listenHost;
         port = ollamaPort;

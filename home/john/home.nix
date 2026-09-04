@@ -10,7 +10,6 @@ let
   pkgs-jzila = inputs.pkgs-jzila or null;
   beads-fixed = inputs.beads-fixed or null;
   wifitui = inputs.wifitui or null;
-  roborev = inputs.roborev or null;
   jzila-derivations = inputs.jzila-derivations or null;
 
   nvim = inputs.nvim;
@@ -61,13 +60,14 @@ let
     # opencode from the official release archive. nixpkgs has to re-pin a bun
     # dependency FOD on every bump, so pkgs.opencode trails the upstream tag.
     (pkgs-unstable.callPackage ../../pkgs/opencode-bin { })
+    # roborev from the official release archive. Upstream dropped the flake it
+    # used to ship, and there is no nixpkgs package.
+    (pkgs-unstable.callPackage ../../pkgs/roborev-bin { })
   ] ++ [
     pkgs.postgresql
   ] ++ lib.optionals (jzila-derivations != null) [
     jzila-derivations.packages.${system}.claude-code
     jzila-derivations.packages.${system}.codex
-  ] ++ lib.optionals (roborev != null) [
-    roborev.packages.${system}.default
   ];
 
   # Linux-only packages
@@ -130,6 +130,9 @@ in
     enable = true;
     ignores = [
       ".vscode/**"
+      # Finder scatters these through any directory it has been browsed in,
+      # including checkouts on the NixOS hosts over a shared mount.
+      ".DS_Store"
     ];
     settings = {
       user = {

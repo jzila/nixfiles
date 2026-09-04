@@ -1,0 +1,21 @@
+{
+  "version": "0.67.0",
+  "systems": {
+    "aarch64-darwin": {
+      "url": "https://github.com/kenn-io/roborev/releases/download/v0.67.0/roborev_0.67.0_darwin_arm64.tar.gz",
+      "hash": "sha256-KOO4Trjg1vgaMGx8H3XJU5VMGS3i2ZpHqP5Gxu6TsJA="
+    },
+    "x86_64-darwin": {
+      "url": "https://github.com/kenn-io/roborev/releases/download/v0.67.0/roborev_0.67.0_darwin_amd64.tar.gz",
+      "hash": "sha256-sQ0U8fraIxY25edmKOCioBqFqPlqfwNSCJ5p+q2TW2c="
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/kenn-io/roborev/releases/download/v0.67.0/roborev_0.67.0_linux_arm64.tar.gz",
+      "hash": "sha256-71oT9IDs6cO/36BwJZumatg9crvUZkhPrFEsCvCkGgI="
+    },
+    "x86_64-linux": {
+      "url": "https://github.com/kenn-io/roborev/releases/download/v0.67.0/roborev_0.67.0_linux_amd64.tar.gz",
+      "hash": "sha256-aLoixYaBO9VXl5c8sXYVf6NpNrAtstS+5Gu9SZv/u4c="
+    }
+  }
+}
