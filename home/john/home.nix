@@ -130,6 +130,9 @@ in
     enable = true;
     ignores = [
       ".vscode/**"
+      # Finder scatters these through any directory it has been browsed in,
+      # including checkouts on the NixOS hosts over a shared mount.
+      ".DS_Store"
     ];
     settings = {
       user = {
