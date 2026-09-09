@@ -3,3 +3,4 @@ result-*
 netboot-files/
 
 **/CLAUDE.local.md
+.kata.local.toml

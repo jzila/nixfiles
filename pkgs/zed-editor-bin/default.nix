@@ -6,7 +6,7 @@
 # regularly leaves zed-editor with no binary substitute. Zed publishes signed
 # .dmg builds per release, so unpack one of those.
 #
-# Bump with ./scripts/update-zed-editor-bin.sh, which rewrites sources.json.
+# Bump with ./scripts/update-bin.sh zed-editor-bin, which rewrites sources.json.
 {
   lib,
   stdenvNoCC,

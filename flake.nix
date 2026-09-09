@@ -173,6 +173,8 @@
           in {
             opencode-bin = pkgs-unstable.callPackage ./pkgs/opencode-bin { };
             roborev-bin = pkgs-unstable.callPackage ./pkgs/roborev-bin { };
+            agentsview-bin = pkgs-unstable.callPackage ./pkgs/agentsview-bin { };
+            kata-bin = pkgs-unstable.callPackage ./pkgs/kata-bin { };
           } // lib.optionalAttrs (lib.hasSuffix "darwin" system) {
             # Zed only publishes release builds for macOS; Linux uses pkgs.zed-editor.
             zed-editor-bin = pkgs-unstable.callPackage ./pkgs/zed-editor-bin { };

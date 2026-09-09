@@ -17,5 +17,16 @@
       "url": "https://github.com/kenn-io/roborev/releases/download/v0.67.0/roborev_0.67.0_linux_amd64.tar.gz",
       "hash": "sha256-aLoixYaBO9VXl5c8sXYVf6NpNrAtstS+5Gu9SZv/u4c="
     }
+  },
+  "update": {
+    "repo": "kenn-io/roborev",
+    "asset": "roborev_${version}_${arch}.tar.gz",
+    "arches": {
+      "aarch64-darwin": "darwin_arm64",
+      "x86_64-darwin": "darwin_amd64",
+      "aarch64-linux": "linux_arm64",
+      "x86_64-linux": "linux_amd64"
+    },
+    "verify": "roborev version"
   }
 }
