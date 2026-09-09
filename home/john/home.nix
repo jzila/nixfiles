@@ -101,6 +101,7 @@ in
   imports = [
     ./zsh.nix
     ./kitty-bare.nix
+    ../../modules/agentsview.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
@@ -112,6 +113,13 @@ in
   # home-manager should manage itself.
   programs.home-manager.enable = true;
   programs.direnv.enable = true;
+
+  # Always-on agentsview server (launchd agent on darwin, systemd user
+  # service on linux) on a non-8080 port; see modules/agentsview.nix for why.
+  services.agentsview = {
+    enable = true;
+    package = localPkgs.agentsview-bin;
+  };
 
   # Python packaging/interpreter manager. uv downloads its own interpreters,
   # which are not Nix-linked; on the NixOS hosts that needs the nix-ld shim
