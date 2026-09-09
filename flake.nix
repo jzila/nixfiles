@@ -97,12 +97,40 @@
         module = import ./nixvim/config;
       };
 
+      # Packages built from vendored release archives under ./pkgs, rather than
+      # taken from nixpkgs. Defined once here so both the `packages` flake
+      # output and Home Manager (via the `localPkgs` specialArg below) build
+      # the exact same derivations instead of each calling callPackage on its
+      # own copy of these paths.
+      mkLocalPackages = pkgs-unstable: {
+        # opencode from the official release archive. nixpkgs has to re-pin a
+        # bun dependency FOD on every bump, so pkgs.opencode trails the
+        # upstream tag.
+        opencode-bin = pkgs-unstable.callPackage ./pkgs/opencode-bin { };
+        # roborev from the official release archive. Upstream dropped the
+        # flake it used to ship, and there is no nixpkgs package.
+        roborev-bin = pkgs-unstable.callPackage ./pkgs/roborev-bin { };
+        # agentsview from the official release archive, for the same reason:
+        # no flake upstream and no nixpkgs package.
+        agentsview-bin = pkgs-unstable.callPackage ./pkgs/agentsview-bin { };
+        # kata from the official release archive, same story.
+        kata-bin = pkgs-unstable.callPackage ./pkgs/kata-bin { };
+      } // lib.optionalAttrs (lib.hasSuffix "darwin" pkgs-unstable.stdenv.hostPlatform.system) {
+        # Zed from the official signed release .dmg. nixpkgs builds it from
+        # source and Hydra's aarch64-darwin queue lags the channel, so
+        # pkgs.zed-editor here means compiling the whole Rust workspace
+        # locally on every bump. Zed only publishes release builds for macOS;
+        # Linux uses pkgs.zed-editor.
+        zed-editor-bin = pkgs-unstable.callPackage ./pkgs/zed-editor-bin { };
+      };
+
       # Common Home Manager configuration for NixOS
       homeManagerModule = system: let
         pkgs-unstable = mkPkgsUnstable system;
         pkgs-jzila = mkPkgsJzila system;
         beads-fixed = mkBeadsFixed system;
         nvim = mkNvim system;
+        localPkgs = mkLocalPackages pkgs-unstable;
         isLinux = true;
         isDarwin = false;
       in {
@@ -110,7 +138,7 @@
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable pkgs-jzila beads-fixed nvim isLinux isDarwin;
+          inherit pkgs-unstable pkgs-jzila beads-fixed nvim isLinux isDarwin localPkgs;
         };
         home-manager.users.john = import ./home/john/home.nix;
       };
@@ -119,6 +147,7 @@
       homeManagerDarwinModule = system: let
         pkgs-unstable = mkPkgsUnstable system;
         nvim = mkNvim system;
+        localPkgs = mkLocalPackages pkgs-unstable;
         isLinux = false;
         isDarwin = true;
       in {
@@ -129,7 +158,7 @@
           inputs.mac-app-util.homeManagerModules.default
         ];
         home-manager.extraSpecialArgs = inputs // {
-          inherit pkgs-unstable nvim isLinux isDarwin;
+          inherit pkgs-unstable nvim isLinux isDarwin localPkgs;
           # Linux-only inputs are not available on darwin
           pkgs-jzila = null;
           beads-fixed = null;
@@ -168,17 +197,7 @@
       # Custom packages, exposed so they can be built and tested directly:
       #   nix build .#opencode-bin
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
-        (system:
-          let pkgs-unstable = mkPkgsUnstable system;
-          in {
-            opencode-bin = pkgs-unstable.callPackage ./pkgs/opencode-bin { };
-            roborev-bin = pkgs-unstable.callPackage ./pkgs/roborev-bin { };
-            agentsview-bin = pkgs-unstable.callPackage ./pkgs/agentsview-bin { };
-            kata-bin = pkgs-unstable.callPackage ./pkgs/kata-bin { };
-          } // lib.optionalAttrs (lib.hasSuffix "darwin" system) {
-            # Zed only publishes release builds for macOS; Linux uses pkgs.zed-editor.
-            zed-editor-bin = pkgs-unstable.callPackage ./pkgs/zed-editor-bin { };
-          });
+        (system: mkLocalPackages (mkPkgsUnstable system));
 
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
