@@ -72,4 +72,5 @@ The configuration references external dotfiles in `/home/john/repos/dotfiles/` f
 ### Flake Management
 - Always run `nix flake update` after changing input URLs in flake.nix
 - The flake uses `@inputs` pattern to make all inputs available to modules
-- Custom package sets (pkgs-unstable, pkgs-ollama) are merged with inputs in specialArgs
+- Custom package sets (pkgs-unstable, pkgs-jzila) are merged with inputs in specialArgs
+- The release-archive packages under `./pkgs/` (opencode-bin, roborev-bin, agentsview-bin, kata-bin, zed-editor-bin on darwin) are defined once, via `mkLocalPackages` in flake.nix; that same set backs the `packages.<system>` flake output and is handed to Home Manager as the `localPkgs` specialArg, so `home/john/home.nix` references `localPkgs.<name>` instead of calling `callPackage` on `./pkgs/*` a second time

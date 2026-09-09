@@ -1,4 +1,4 @@
-{ config, pkgs, pkgs-unstable, lib, nix-vscode-extensions, isLinux, isDarwin, ... }@inputs:
+{ config, pkgs, pkgs-unstable, lib, nix-vscode-extensions, isLinux, isDarwin, localPkgs, ... }@inputs:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -57,17 +57,12 @@ let
     pkgs-unstable.gh
     pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
-    # opencode from the official release archive. nixpkgs has to re-pin a bun
-    # dependency FOD on every bump, so pkgs.opencode trails the upstream tag.
-    (pkgs-unstable.callPackage ../../pkgs/opencode-bin { })
-    # roborev from the official release archive. Upstream dropped the flake it
-    # used to ship, and there is no nixpkgs package.
-    (pkgs-unstable.callPackage ../../pkgs/roborev-bin { })
-    # agentsview from the official release archive, for the same reason: no
-    # flake upstream and no nixpkgs package.
-    (pkgs-unstable.callPackage ../../pkgs/agentsview-bin { })
-    # kata from the official release archive, same story.
-    (pkgs-unstable.callPackage ../../pkgs/kata-bin { })
+    # Release-archive builds defined once in flake.nix (see mkLocalPackages)
+    # and threaded through as localPkgs.
+    localPkgs.opencode-bin
+    localPkgs.roborev-bin
+    localPkgs.agentsview-bin
+    localPkgs.kata-bin
   ] ++ [
     pkgs.postgresql
   ] ++ lib.optionals (jzila-derivations != null) [
@@ -98,10 +93,8 @@ let
   # Darwin-only packages
   darwinPackages = lib.optionals isDarwin [
     pkgs.firefox-bin
-    # Zed from the official signed release .dmg. nixpkgs builds it from source
-    # and Hydra's aarch64-darwin queue lags the channel, so pkgs.zed-editor
-    # here means compiling the whole Rust workspace locally on every bump.
-    (pkgs.callPackage ../../pkgs/zed-editor-bin { })
+    # Release-archive build defined once in flake.nix (see mkLocalPackages).
+    localPkgs.zed-editor-bin
   ];
 in
 {
