@@ -1,0 +1,21 @@
+{
+  "version": "0.42.0",
+  "systems": {
+    "aarch64-darwin": {
+      "url": "https://github.com/kenn-io/agentsview/releases/download/v0.42.0/agentsview_0.42.0_darwin_arm64.tar.gz",
+      "hash": "sha256-V/Q3oIny+dQcczXXziqW8rqVoR1FF2eMamhmplOQo/M="
+    },
+    "x86_64-darwin": {
+      "url": "https://github.com/kenn-io/agentsview/releases/download/v0.42.0/agentsview_0.42.0_darwin_amd64.tar.gz",
+      "hash": "sha256-rfPOgqENoonHXqoH6Ch/j0DY0+JcvPy7O0iUAbCAeVc="
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/kenn-io/agentsview/releases/download/v0.42.0/agentsview_0.42.0_linux_arm64.tar.gz",
+      "hash": "sha256-wUjvjIvJcV4sNRwb9yYTVHm153hpP4at5pIA4evMCco="
+    },
+    "x86_64-linux": {
+      "url": "https://github.com/kenn-io/agentsview/releases/download/v0.42.0/agentsview_0.42.0_linux_amd64.tar.gz",
+      "hash": "sha256-8riieLYHdu6O23Rctbs9orXeVycbSaadlK9Por2xdBQ="
+    }
+  }
+}
