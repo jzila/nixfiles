@@ -17,5 +17,16 @@
       "url": "https://github.com/kenn-io/agentsview/releases/download/v0.42.0/agentsview_0.42.0_linux_amd64.tar.gz",
       "hash": "sha256-8riieLYHdu6O23Rctbs9orXeVycbSaadlK9Por2xdBQ="
     }
+  },
+  "update": {
+    "repo": "kenn-io/agentsview",
+    "asset": "agentsview_${version}_${arch}.tar.gz",
+    "arches": {
+      "aarch64-darwin": "darwin_arm64",
+      "x86_64-darwin": "darwin_amd64",
+      "aarch64-linux": "linux_arm64",
+      "x86_64-linux": "linux_amd64"
+    },
+    "verify": "agentsview --version"
   }
 }

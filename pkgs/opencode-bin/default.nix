@@ -7,7 +7,7 @@
 # archives hold a single self-contained binary per platform, so unpack that and
 # track the tag directly.
 #
-# Bump with ./scripts/update-opencode-bin.sh, which rewrites sources.json.
+# Bump with ./scripts/update-bin.sh opencode-bin, which rewrites sources.json.
 {
   lib,
   # makeBinaryWrapper compiles its wrapper and autoPatchelfHook wants the

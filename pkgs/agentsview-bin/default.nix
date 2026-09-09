@@ -9,7 +9,7 @@
 # dynamically against glibc, libstdc++ and libgcc_s, so linux runs
 # autoPatchelfHook over them. The darwin binaries only need libSystem.
 #
-# Bump with ./scripts/update-agentsview-bin.sh, which rewrites sources.json.
+# Bump with ./scripts/update-bin.sh agentsview-bin, which rewrites sources.json.
 {
   lib,
   # autoPatchelfHook wants the stdenv's libc and cc.lib, so this needs a cc on

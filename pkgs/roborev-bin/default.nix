@@ -5,7 +5,7 @@
 # goreleaser archives instead. They hold one statically linked Go binary per
 # platform, so there is nothing to patch or link against.
 #
-# Bump with ./scripts/update-roborev-bin.sh, which rewrites sources.json.
+# Bump with ./scripts/update-bin.sh roborev-bin, which rewrites sources.json.
 {
   lib,
   stdenvNoCC,

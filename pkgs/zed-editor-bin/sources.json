@@ -9,5 +9,13 @@
       "url": "https://github.com/zed-industries/zed/releases/download/v1.17.2/Zed-x86_64.dmg",
       "hash": "sha256-dW8bfHsjQAwdYcys+j/LPf1tCD9m6efWfPlnthLVz5E="
     }
+  },
+  "update": {
+    "repo": "zed-industries/zed",
+    "assets": {
+      "aarch64-darwin": "Zed-aarch64.dmg",
+      "x86_64-darwin": "Zed-x86_64.dmg"
+    },
+    "verify": "zeditor --version"
   }
 }

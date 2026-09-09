@@ -10,7 +10,7 @@
 # "managed by a package manager" message instead of trying to replace a binary
 # it has no permission to write in the store.
 #
-# Bump with ./scripts/update-kata-bin.sh, which rewrites sources.json.
+# Bump with ./scripts/update-bin.sh kata-bin, which rewrites sources.json.
 {
   lib,
   stdenvNoCC,

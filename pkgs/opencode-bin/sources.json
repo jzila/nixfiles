@@ -17,5 +17,15 @@
       "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.27/opencode-linux-x64.tar.gz",
       "hash": "sha256-SvVJT5Qz9Z24weNEGY8O5ypQwG7ACftKiuq0wtSr1wI="
     }
+  },
+  "update": {
+    "repo": "anomalyco/opencode",
+    "assets": {
+      "aarch64-darwin": "opencode-darwin-arm64.zip",
+      "x86_64-darwin": "opencode-darwin-x64.zip",
+      "aarch64-linux": "opencode-linux-arm64.tar.gz",
+      "x86_64-linux": "opencode-linux-x64.tar.gz"
+    },
+    "verify": "opencode --version"
   }
 }
