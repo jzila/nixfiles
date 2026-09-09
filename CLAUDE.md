@@ -39,13 +39,14 @@ The system includes development tools installed via both NixOS packages and Home
 ### Configuration Organization
 - `hosts/venator/` - System-specific configuration for main laptop
 - `home/john/` - User-specific Home Manager configuration  
-- `modules/` - Reusable modules (Plasma, Ollama containers)
+- `modules/` - Reusable modules (Plasma, Ollama containers, agentsview service)
 - Host imports nixos-hardware module for ASUS Zephyrus GA402 optimizations
 
 ### Key Integration Points
 - Home Manager users defined in flake.nix via `home-manager.users.john`
 - All flake inputs available to modules via `specialArgs = inputs` pattern
 - Plasma configuration modularized in `modules/plasma/` with plasma-manager integration
+- `modules/agentsview.nix` exposes `services.agentsview.{enable, package, port, host, extraArgs, updateCheck}`, a Home Manager module that runs `agentsview serve` as a launchd agent on darwin and a systemd user service on linux, on port 8420 by default
 - Container infrastructure with Podman configured at system level
 - TMUX configuration handled via `home.sessionVariables` instead of script files
 
