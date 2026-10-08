@@ -70,6 +70,20 @@
     rtkit.enable = true;
     pam = {
       services.sudo.u2fAuth = true;
+      u2f.settings = {
+        # Print "Please touch the device." instead of blinking silently.
+        cue = true;
+        # pam_u2f binds registrations to pam://<hostname> by default, so a
+        # key registered on one host fails on every other. A fixed origin
+        # lets the one registration file below work on every host.
+        origin = "pam://nixfiles";
+        appid = "pam://nixfiles";
+        # Key handles and public keys only, nothing secret: authenticating
+        # still needs the physical key. Add a key (e.g. a backup) with:
+        #   pamu2fcfg -n -o pam://nixfiles -i pam://nixfiles
+        # and append its output to john's line.
+        authfile = ./u2f_keys;
+      };
       loginLimits = [{
         domain = "*";
         type = "soft";
@@ -84,6 +98,12 @@
       '';
     };
   };
+
+  # Graphical sudo prompt: sudo falls back to SUDO_ASKPASS when it has no
+  # terminal (or with -A), so tools that run sudo without a tty get a KDE
+  # password dialog instead of failing. Plasma already points
+  # programs.ssh.askPassword at ksshaskpass.
+  environment.sessionVariables.SUDO_ASKPASS = config.programs.ssh.askPassword;
 
   # Keybase Services
   services.keybase.enable = true;
