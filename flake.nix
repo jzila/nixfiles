@@ -33,10 +33,9 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    nixvim = {
-      url = "github:nix-community/nixvim";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
+    # No nixpkgs follows: nixvim pins and tests against its own nixpkgs, and
+    # warns when that pin is overridden.
+    nixvim.url = "github:nix-community/nixvim";
 
     beads = {
       url = "github:steveyegge/beads/v0.49.1";
