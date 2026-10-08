@@ -110,7 +110,22 @@
     language = "en";
     sttLibrary = "sherpa";
   };
-  networking.firewall.allowedTCPPorts = [ 10300 ];
+
+  # Text-to-speech for Assist over the Wyoming protocol. Piper streams audio
+  # sentence by sentence by default, so speech starts before the reply is
+  # fully generated. The "high" lessac voice trades a little speed for
+  # quality, which the CPU here has to spare. The voice downloads into the
+  # service's state dir on first start. In HA: Wyoming Protocol, port 10200.
+  services.wyoming.piper.servers.lessac = {
+    enable = true;
+    uri = "tcp://0.0.0.0:10200";
+    voice = "en_US-lessac-high";
+  };
+
+  networking.firewall.allowedTCPPorts = [
+    10200 # wyoming-piper
+    10300 # wyoming-faster-whisper (Parakeet)
+  ];
 
   # NixOS state version
   system.stateVersion = "23.11";
