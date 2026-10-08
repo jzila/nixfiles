@@ -76,7 +76,6 @@ let
     pkgs.kdePackages.skanpage
     pkgs.gpu-screen-recorder
     pkgs.gpu-screen-recorder-gtk
-    pkgs-unstable.earthly
     pkgs-unstable.signal-desktop
     pkgs-unstable.galaxy-buds-client
     pkgs-unstable.google-chrome
