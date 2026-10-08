@@ -32,17 +32,9 @@
     '';
   };
 
-  # TODO: Re-enable once nixpkgs 25.11 container bug is fixed
-  # (boot.isNspawnContainer option was removed but still referenced)
-  # containers = (import ../../modules/ollama.nix {
-  #   nixpkgs = nixpkgs-jzila;
-  #   inherit lib;
-  #   devices = [
-  #     "/dev/kfd"
-  #     "/dev/dri/card1"      # Discrete GPU (RX 6650 XT/6700S/6800S)
-  #     "/dev/dri/renderD128" # Discrete GPU render node
-  #   ];
-  # }).containers;
+  # Ollama is off here. To enable it, import ../../modules/ollama.nix; the
+  # discrete GPU (RX 6650 XT/6700S/6800S) is gfx1032, which ROCm has no
+  # kernels for, so also set services.ollama.rocmOverrideGfx = "10.3.0".
 
 
   # ASUS Zephyrus video drivers

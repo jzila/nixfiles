@@ -1,30 +1,12 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, localPkgs, lib, nixos-hardware, nixpkgs, ... }:
-let
-  ollama = import ../../modules/ollama.nix {
-    inherit lib nixpkgs;
-    # Upstream release build; nixpkgs' ollama-rocm is too old for current models.
-    package = localPkgs.ollama-rocm-bin;
-    listenHost = "0.0.0.0";
-    openFirewallOnHost = true;
-    # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
-    # gfxOverride is needed.
-    extraEnvironment = {
-      OLLAMA_FLASH_ATTENTION = "1";
-      # OLLAMA_ACCELERATE = "1";
-      # OLLAMA_NUM_GPU_LAYERS = "9999";
-      OLLAMA_DEBUG = "1";
-      OLLAMA_NUM_PARALLEL = "8";
-    };
-  };
-in
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, ... }:
 {
   imports = [
     # Framework Desktop hardware support
     nixos-hardware.nixosModules.framework-amd-ai-300-series
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
-    ollama
+    ../../modules/ollama.nix
   ];
 
   # Networking configuration
@@ -34,7 +16,22 @@ in
       127.0.0.1 manuscripts.localhost
     '';
   };
-  containers = ollama.containers;
+
+  # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
+  # rocmOverrideGfx is needed.
+  services.ollama = {
+    environmentVariables = {
+      OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_DEBUG = "1";
+      OLLAMA_NUM_PARALLEL = "8";
+    };
+    # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
+    # gemma4 serves Home Assistant's Assist.
+    loadModels = [
+      "qwen3.6:35b-a3b"
+      "gemma4:26b-a4b"
+    ];
+  };
 
   # Enable ROCm support for AMD graphics
   nixpkgs.config.rocmSupport = true;
