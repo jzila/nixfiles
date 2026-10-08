@@ -9,7 +9,10 @@
 , openWebUIPort ? 8081
 , openFirewallOnHost ? false
 , autoStart ? true
-, gfxOverride ? "10.3.0"
+, # HSA_OVERRIDE_GFX_VERSION, for GPUs the ROCm build has no kernels for
+  # (e.g. "10.3.0" for RDNA2 parts other than gfx1030). null = use the GPU's
+  # own target.
+  gfxOverride ? null
 , extraEnvironment ? {}
 , devices ? [
     "/dev/kfd"
@@ -22,11 +25,16 @@
     inherit nixpkgs autoStart;
     # Obviates the need for a hostAddress parameter
     privateNetwork = false;
-    # Allow access to the specified device nodes inside the container.
-    allowedDevices = let
-      deviceDescr = node: { inherit node; modifier = "rw"; };
-    in map deviceDescr devices;
-    bindMounts = (lib.genAttrs devices (name: {})) // {
+    # The container runs with DevicePolicy=closed, so every device node ROCm
+    # opens has to be allowed here. DeviceAllow only matches device nodes or
+    # classes, never directories: an entry for /dev/dri silently allows
+    # nothing, and ROCm then finds no GPU and ollama falls back to CPU. Allow
+    # the whole DRM class instead so card/render node numbering doesn't matter.
+    allowedDevices = map (node: { inherit node; modifier = "rw"; }) [
+      "/dev/kfd"
+      "char-drm"
+    ];
+    bindMounts = (lib.genAttrs devices (name: { isReadOnly = false; })) // {
       "/sys/module".isReadOnly = true;
     };
     config = { pkgs, lib, ... }: {

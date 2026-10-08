@@ -5,12 +5,8 @@ let
     inherit lib nixpkgs;
     listenHost = "0.0.0.0";
     openFirewallOnHost = true;
-    gfxOverride = "11.5.1";
-    # devices = [
-    #   "/dev/kfd"
-    #   "/dev/dri/card1"
-    #   "/dev/dri/renderD128"
-    # ];
+    # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
+    # gfxOverride is needed.
     extraEnvironment = {
       OLLAMA_FLASH_ATTENTION = "1";
       # OLLAMA_ACCELERATE = "1";
@@ -62,6 +58,12 @@ in
   hardware.graphics.enable = true;
   hardware.graphics.extraPackages = [
     pkgs.rocmPackages.clr.icd
+  ];
+
+  # GPU diagnostics: rocminfo lists the agents ROCm sees, nvtop shows GPU load
+  environment.systemPackages = [
+    pkgs.rocmPackages.rocminfo
+    pkgs.nvtopPackages.amd
   ];
 
   # Power management - use power-profiles-daemon for desktop (not TLP)
