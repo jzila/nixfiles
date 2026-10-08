@@ -98,6 +98,20 @@
     "--operator=john"
   ];
 
+  # Speech-to-text for Home Assistant's Assist over the Wyoming protocol. With
+  # language "en", wyoming-faster-whisper runs NVIDIA Parakeet TDT 0.6B v2
+  # (int8, via sherpa-onnx) instead of Whisper: much faster on CPU, and better
+  # on English. The model downloads into the service's state dir on first
+  # start. In HA: Settings > Devices & services > Add > Wyoming Protocol,
+  # host argo.local.zila.dev, port 10300.
+  services.wyoming.faster-whisper.servers.parakeet = {
+    enable = true;
+    uri = "tcp://0.0.0.0:10300";
+    language = "en";
+    sttLibrary = "sherpa";
+  };
+  networking.firewall.allowedTCPPorts = [ 10300 ];
+
   # NixOS state version
   system.stateVersion = "23.11";
 }
