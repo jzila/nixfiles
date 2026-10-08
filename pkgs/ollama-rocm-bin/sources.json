@@ -1,0 +1,21 @@
+{
+  "version": "0.40.1",
+  "systems": {
+    "x86_64-linux": {
+      "url": "https://github.com/ollama/ollama/releases/download/v0.40.1/ollama-linux-amd64.tar.zst",
+      "hash": "sha256-p6674912zPE1Glaj5XIYrUhjy1+amTjFjeh6N1VeNV0="
+    },
+    "x86_64-linux-rocm": {
+      "url": "https://github.com/ollama/ollama/releases/download/v0.40.1/ollama-linux-amd64-rocm.tar.zst",
+      "hash": "sha256-aic30GQ3aNTIvRMB/47gll0ZyyQf0fCprlONyhweq0w="
+    }
+  },
+  "update": {
+    "repo": "ollama/ollama",
+    "assets": {
+      "x86_64-linux": "ollama-linux-amd64.tar.zst",
+      "x86_64-linux-rocm": "ollama-linux-amd64-rocm.tar.zst"
+    },
+    "verify": "ollama --version"
+  }
+}

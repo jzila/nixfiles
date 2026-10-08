@@ -1,32 +1,12 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, ... }:
-let
-  ollama = import ../../modules/ollama.nix {
-    inherit lib nixpkgs;
-    listenHost = "0.0.0.0";
-    openFirewallOnHost = true;
-    gfxOverride = "11.5.1";
-    # devices = [
-    #   "/dev/kfd"
-    #   "/dev/dri/card1"
-    #   "/dev/dri/renderD128"
-    # ];
-    extraEnvironment = {
-      OLLAMA_FLASH_ATTENTION = "1";
-      # OLLAMA_ACCELERATE = "1";
-      # OLLAMA_NUM_GPU_LAYERS = "9999";
-      OLLAMA_DEBUG = "1";
-      OLLAMA_NUM_PARALLEL = "8";
-    };
-  };
-in
+{ config, pkgs, pkgs-unstable, lib, nixos-hardware, ... }:
 {
   imports = [
     # Framework Desktop hardware support
     nixos-hardware.nixosModules.framework-amd-ai-300-series
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
-    ollama
+    ../../modules/ollama.nix
   ];
 
   # Networking configuration
@@ -36,7 +16,22 @@ in
       127.0.0.1 manuscripts.localhost
     '';
   };
-  containers = ollama.containers;
+
+  # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
+  # rocmOverrideGfx is needed.
+  services.ollama = {
+    environmentVariables = {
+      OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_DEBUG = "1";
+      OLLAMA_NUM_PARALLEL = "4";
+    };
+    # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
+    # gemma4 serves Home Assistant's Assist.
+    loadModels = [
+      "qwen3.6:35b-a3b"
+      "gemma4:26b-a4b"
+    ];
+  };
 
   # Enable ROCm support for AMD graphics
   nixpkgs.config.rocmSupport = true;
@@ -62,6 +57,12 @@ in
   hardware.graphics.enable = true;
   hardware.graphics.extraPackages = [
     pkgs.rocmPackages.clr.icd
+  ];
+
+  # GPU diagnostics: rocminfo lists the agents ROCm sees, nvtop shows GPU load
+  environment.systemPackages = [
+    pkgs.rocmPackages.rocminfo
+    pkgs.nvtopPackages.amd
   ];
 
   # Power management - use power-profiles-daemon for desktop (not TLP)
@@ -95,6 +96,35 @@ in
   # Tailscale operator assignment
   services.tailscale.extraUpFlags = [
     "--operator=john"
+  ];
+
+  # Speech-to-text for Home Assistant's Assist over the Wyoming protocol. With
+  # language "en", wyoming-faster-whisper runs NVIDIA Parakeet TDT 0.6B v2
+  # (int8, via sherpa-onnx) instead of Whisper: much faster on CPU, and better
+  # on English. The model downloads into the service's state dir on first
+  # start. In HA: Settings > Devices & services > Add > Wyoming Protocol,
+  # host argo.local.zila.dev, port 10300.
+  services.wyoming.faster-whisper.servers.parakeet = {
+    enable = true;
+    uri = "tcp://0.0.0.0:10300";
+    language = "en";
+    sttLibrary = "sherpa";
+  };
+
+  # Text-to-speech for Assist over the Wyoming protocol. Piper streams audio
+  # sentence by sentence by default, so speech starts before the reply is
+  # fully generated. The "high" lessac voice trades a little speed for
+  # quality, which the CPU here has to spare. The voice downloads into the
+  # service's state dir on first start. In HA: Wyoming Protocol, port 10200.
+  services.wyoming.piper.servers.lessac = {
+    enable = true;
+    uri = "tcp://0.0.0.0:10200";
+    voice = "en_US-lessac-high";
+  };
+
+  networking.firewall.allowedTCPPorts = [
+    10200 # wyoming-piper
+    10300 # wyoming-faster-whisper (Parakeet)
   ];
 
   # NixOS state version

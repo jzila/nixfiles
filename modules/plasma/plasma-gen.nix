@@ -6,7 +6,7 @@
       "Alacritty.desktop"."New" = [ ];
       "Alacritty.desktop"."_launch" = [ ];
       "KDE Keyboard Layout Switcher"."Switch to Next Keyboard Layout" = "Meta+Alt+K";
-      "alacritty.desktop"."_launch" = "Meta+Shift+T";
+      "kitty-bare.desktop"."_launch" = "Meta+Shift+T";
       "google-chrome.desktop"."_launch" = "Meta+C";
       "google-chrome.desktop"."new-private-window" = "Meta+Shift+C";
       "google-chrome.desktop"."new-window" = [ ];

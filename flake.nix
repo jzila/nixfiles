@@ -33,10 +33,9 @@
       inputs.home-manager.follows = "home-manager";
     };
 
-    nixvim = {
-      url = "github:nix-community/nixvim";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-    };
+    # No nixpkgs follows: nixvim pins and tests against its own nixpkgs, and
+    # warns when that pin is overridden.
+    nixvim.url = "github:nix-community/nixvim";
 
     beads = {
       url = "github:steveyegge/beads/v0.49.1";
@@ -115,6 +114,12 @@
         agentsview-bin = pkgs-unstable.callPackage ./pkgs/agentsview-bin { };
         # kata from the official release archive, same story.
         kata-bin = pkgs-unstable.callPackage ./pkgs/kata-bin { };
+      } // lib.optionalAttrs (pkgs-unstable.stdenv.hostPlatform.system == "x86_64-linux") {
+        # ollama with ROCm from the official release archives. nixpkgs builds
+        # it against its own ROCm and trails upstream by several releases,
+        # too far behind to pull current models. Only x86_64-linux has a ROCm
+        # release build.
+        ollama-rocm-bin = pkgs-unstable.callPackage ./pkgs/ollama-rocm-bin { };
       } // lib.optionalAttrs (lib.hasSuffix "darwin" pkgs-unstable.stdenv.hostPlatform.system) {
         # Zed from the official signed release .dmg. nixpkgs builds it from
         # source and Hydra's aarch64-darwin queue lags the channel, so
@@ -171,9 +176,10 @@
         let
           sys = args.system or "x86_64-linux";
           pkgs-unstable = mkPkgsUnstable sys;
+          localPkgs = mkLocalPackages pkgs-unstable;
         in lib.nixosSystem {
           system = sys;
-          specialArgs = inputs // { inherit pkgs-unstable; } // specialArgs;
+          specialArgs = inputs // { inherit pkgs-unstable localPkgs; } // specialArgs;
           modules = [ hostPath ] ++ extraModules;
         };
 

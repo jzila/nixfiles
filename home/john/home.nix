@@ -55,13 +55,11 @@ let
     pkgs-unstable.go
     pkgs-unstable.lazygit
     pkgs-unstable.gh
-    pkgs-unstable.gemini-cli
     pkgs-unstable.step-cli
     # Release-archive builds defined once in flake.nix (see mkLocalPackages)
     # and threaded through as localPkgs.
-    localPkgs.opencode-bin
+    # localPkgs.opencode-bin
     localPkgs.roborev-bin
-    localPkgs.agentsview-bin
     localPkgs.kata-bin
   ] ++ [
     pkgs.postgresql
@@ -78,7 +76,6 @@ let
     pkgs.kdePackages.skanpage
     pkgs.gpu-screen-recorder
     pkgs.gpu-screen-recorder-gtk
-    pkgs-unstable.earthly
     pkgs-unstable.signal-desktop
     pkgs-unstable.galaxy-buds-client
     pkgs-unstable.google-chrome
@@ -86,8 +83,10 @@ let
     beads-fixed
   ] ++ lib.optionals (wifitui != null) [
     wifitui.packages.${system}.default
-  ] ++ lib.optionals (pkgs-jzila != null) [
-    pkgs-jzila.ollama
+  ] ++ lib.optionals (localPkgs ? ollama-rocm-bin) [
+    # Same release build the ollama container serves, so client and server
+    # versions match.
+    localPkgs.ollama-rocm-bin
   ]);
 
   # Darwin-only packages
@@ -101,7 +100,6 @@ in
   imports = [
     ./zsh.nix
     ./kitty-bare.nix
-    ../../modules/agentsview.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
@@ -113,13 +111,6 @@ in
   # home-manager should manage itself.
   programs.home-manager.enable = true;
   programs.direnv.enable = true;
-
-  # Always-on agentsview server (launchd agent on darwin, systemd user
-  # service on linux) on a non-8080 port; see modules/agentsview.nix for why.
-  services.agentsview = {
-    enable = true;
-    package = localPkgs.agentsview-bin;
-  };
 
   # Python packaging/interpreter manager. uv downloads its own interpreters,
   # which are not Nix-linked; on the NixOS hosts that needs the nix-ld shim
