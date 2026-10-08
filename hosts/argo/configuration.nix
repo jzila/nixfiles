@@ -23,7 +23,7 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
-      OLLAMA_NUM_PARALLEL = "8";
+      OLLAMA_NUM_PARALLEL = "4";
     };
     # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
     # gemma4 serves Home Assistant's Assist.
