@@ -13,6 +13,8 @@
   # (e.g. "10.3.0" for RDNA2 parts other than gfx1030). null = use the GPU's
   # own target.
   gfxOverride ? null
+, # ollama package to run; null = the container nixpkgs' ollama-rocm.
+  package ? null
 , extraEnvironment ? {}
 , devices ? [
     "/dev/kfd"
@@ -50,7 +52,7 @@
       services.ollama = {
         # ollama-rocm is what selects the ROCm build; the separate
         # services.ollama.acceleration option that used to do it is gone.
-        package = pkgs.ollama-rocm;
+        package = if package != null then package else pkgs.ollama-rocm;
         enable = true;
         rocmOverrideGfx = gfxOverride;
         host = listenHost;

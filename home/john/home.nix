@@ -84,8 +84,10 @@ let
     beads-fixed
   ] ++ lib.optionals (wifitui != null) [
     wifitui.packages.${system}.default
-  ] ++ lib.optionals (pkgs-jzila != null) [
-    pkgs-jzila.ollama
+  ] ++ lib.optionals (localPkgs ? ollama-rocm-bin) [
+    # Same release build the ollama container serves, so client and server
+    # versions match.
+    localPkgs.ollama-rocm-bin
   ]);
 
   # Darwin-only packages

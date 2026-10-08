@@ -1,8 +1,10 @@
 # Framework Desktop (AMD Ryzen AI Max 300 Series) configuration
-{ config, pkgs, pkgs-unstable, lib, nixos-hardware, nixpkgs, ... }:
+{ config, pkgs, pkgs-unstable, localPkgs, lib, nixos-hardware, nixpkgs, ... }:
 let
   ollama = import ../../modules/ollama.nix {
     inherit lib nixpkgs;
+    # Upstream release build; nixpkgs' ollama-rocm is too old for current models.
+    package = localPkgs.ollama-rocm-bin;
     listenHost = "0.0.0.0";
     openFirewallOnHost = true;
     # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
