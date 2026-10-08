@@ -70,6 +70,10 @@
     rtkit.enable = true;
     pam = {
       services.sudo.u2fAuth = true;
+      # Lock screen (kscreenlocker's PAM service). Not sddm: pam_kwallet
+      # unlocks the wallet with the login password, so a key-only login
+      # would leave KWallet locked.
+      services.kde.u2fAuth = true;
       u2f.settings = {
         # Print "Please touch the device." instead of blinking silently.
         cue = true;
