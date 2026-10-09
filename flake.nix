@@ -56,6 +56,9 @@
       url = "github:cachix/devenv/latest";
     };
 
+    # Hermes Agent ships its own flake (package + Home Manager module).
+    hermes-agent.url = "github:NousResearch/hermes-agent";
+
     mac-app-util = {
       url = "github:hraban/mac-app-util";
     };

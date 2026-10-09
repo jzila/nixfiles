@@ -100,6 +100,7 @@ in
   imports = [
     ./zsh.nix
     ./kitty-bare.nix
+    ./hermes.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
