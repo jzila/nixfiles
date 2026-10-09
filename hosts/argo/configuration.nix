@@ -7,6 +7,7 @@
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
+    ../../modules/hermes-container.nix
   ];
 
   # Networking configuration

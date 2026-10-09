@@ -1,37 +1,19 @@
-# Hermes Agent (Nous Research), from its upstream flake, running against the
-# ollama on argo.
+# Hermes Agent's CLI. The gateway (Signal) runs in the hermes container on
+# argo (modules/hermes-container.nix), which owns the configuration; the CLI
+# runs as john, unsandboxed, and shares that state through HERMES_HOME.
 #
-# Hermes talks to ollama through the OpenAI-compatible /v1 API, which cannot
-# set num_ctx per request: ollama falls back to OLLAMA_CONTEXT_LENGTH. Hermes
-# wants at least 64k of context. argo pins OLLAMA_CONTEXT_LENGTH to the same
-# 262144 (gemma4's native context) that context_length declares here, and Home
-# Assistant's agent asks for the same, so every client gets the one loaded
-# gemma4 instance instead of ollama reloading it whenever the context size
-# changes.
-{ hermes-agent, ... }:
+# The tools work in the directory `hermes` is started from: the shared
+# config.yaml sets terminal.cwd to ".", which resolves against the launch
+# directory here and against the gateway's own directory in the container.
+{ lib, osConfig ? { }, hermes-agent, ... }:
 {
   imports = [ hermes-agent.homeManagerModules.default ];
 
-  # Puts `hermes` on PATH with HERMES_HOME set; state lives in ~/.hermes.
+  # Puts `hermes` on PATH and exports HERMES_HOME. services.hermes-agent stays
+  # disabled: no user services, and no second config.yaml writer.
   programs.hermes-agent.enable = true;
-
-  # Writes the settings below into ~/.hermes/config.yaml on activation (a deep
-  # merge, so keys set at runtime with `hermes config set` survive).
-  services.hermes-agent.enable = true;
-
-  # Written to config.yaml as terminal.cwd, the directory the terminal and file
-  # tools work in. The module defaults it to $HOME, which suits the gateway
-  # service but pins an interactive `hermes` there wherever it's started; "."
-  # (Hermes's own default) resolves against the launch directory instead.
-  # The module also uses this as the systemd WorkingDirectory of the gateway
-  # and backend services, which needs an absolute path: if either is enabled,
-  # give it its own (e.g. TERMINAL_CWD in its environment) instead.
-  services.hermes-agent.workingDirectory = ".";
-
-  services.hermes-agent.settings.model = {
-    provider = "custom";
-    base_url = "http://argo.local.zila.dev:11434/v1";
-    default = "gemma4:26b-a4b";
-    context_length = 262144;
-  };
+  # Only argo hosts the shared state; elsewhere the CLI keeps ~/.hermes.
+  services.hermes-agent.hermesHome = lib.mkIf (
+    (osConfig.containers or { }) ? hermes
+  ) "/var/lib/hermes/.hermes";
 }
