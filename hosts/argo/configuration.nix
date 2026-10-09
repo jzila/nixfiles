@@ -23,9 +23,9 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
-      # Slots per model; each reserves its full context up front. At 4 slots
-      # and 262144 context gemma4 measures ~39 GiB. qwen3.6 (qwen35moe) is
-      # held to 1 slot by ollama regardless, ~27 GiB. Together ~66 GiB of the
+      # Slots per model; each reserves its full context up front. qwen3.6
+      # (qwen35moe) is held to 1 slot by ollama regardless. Measured with both
+      # loaded at 262144 context (gemma4 4 slots, qwen3.6 1): 73.4 GiB of the
       # 120 GiB the GPU may map (see boot.kernelParams).
       OLLAMA_NUM_PARALLEL = "4";
       # Default context for clients that can't set num_ctx (the OpenAI /v1
