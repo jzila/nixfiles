@@ -24,8 +24,9 @@
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
       # Slots per model; each reserves its full context up front. At 4 slots
-      # and 262144 context: gemma4 ~41 GiB, qwen3.6 ~43 GiB, together ~84 GiB.
-      # Sized for the BIOS reserving 96 GB of the 128 GB for the GPU.
+      # and 262144 context gemma4 measures ~39 GiB. qwen3.6 (qwen35moe) is
+      # held to 1 slot by ollama regardless, ~27 GiB. Together ~66 GiB of the
+      # 120 GiB the GPU may map (see boot.kernelParams).
       OLLAMA_NUM_PARALLEL = "4";
       # Default context for clients that can't set num_ctx (the OpenAI /v1
       # API, used by Hermes Agent). Keep Home Assistant's context window at
@@ -46,10 +47,17 @@
 
   # Boot configuration
   boot = {
+    # GPU memory is allocated dynamically from system RAM (GTT), as AMD
+    # recommends for Strix Halo: the BIOS reserves only the minimum (0.5 GB)
+    # for the GPU, and these cap how much RAM the GPU may map at 120 GiB of
+    # the 128, leaving 8 GiB it can never take from the OS. Ollama also
+    # assumes an integrated GPU's memory comes out of system RAM; a large BIOS
+    # reservation shrinks the RAM it checks against and keeps a second model
+    # from loading.
     kernelParams = [
       "amd_iommu=off"
-      "amdgpu.gttsize=131072"
-      "ttm.pages_limit=33554432"
+      "amdgpu.gttsize=122880" # MiB
+      "ttm.pages_limit=31457280" # 4 KiB pages
     ];
     # Framework Desktop specific kernel modules config if needed
     extraModprobeConfig = ''
