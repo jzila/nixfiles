@@ -23,7 +23,15 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
+      # Slots per model; each reserves its full context up front. At 4 slots
+      # and 262144 context: gemma4 ~41 GiB, qwen3.6 ~43 GiB, together ~84 GiB.
+      # Sized for the BIOS reserving 96 GB of the 128 GB for the GPU.
       OLLAMA_NUM_PARALLEL = "4";
+      # Default context for clients that can't set num_ctx (the OpenAI /v1
+      # API, used by Hermes Agent). Keep Home Assistant's context window at
+      # the same value: ollama reloads a model whenever a request needs a
+      # different context size.
+      OLLAMA_CONTEXT_LENGTH = "262144";
     };
     # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
     # gemma4 serves Home Assistant's Assist.
