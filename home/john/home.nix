@@ -58,7 +58,6 @@ let
     pkgs-unstable.step-cli
     # Release-archive builds defined once in flake.nix (see mkLocalPackages)
     # and threaded through as localPkgs.
-    localPkgs.opencode-bin
     localPkgs.roborev-bin
     localPkgs.kata-bin
   ] ++ [
@@ -101,6 +100,7 @@ in
     ./zsh.nix
     ./kitty-bare.nix
     ./hermes.nix
+    ./opencode.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
   ];
