@@ -68,11 +68,19 @@ stdenv.mkDerivation {
   # After fixup, not postInstall: on linux the binary only becomes runnable once
   # autoPatchelfHook has pointed it at the store's loader, and that runs in the
   # fixup phase. opencode wants a writable HOME even to print completions.
+  # On linux the generator has come back empty inside the sandbox, and
+  # installShellCompletion fails the build on an empty file, so only install
+  # what actually got generated.
   postFixup = lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     export HOME="$(mktemp -d)"
-    installShellCompletion --cmd opencode \
-      --bash <(SHELL=/bin/bash "$out/bin/opencode" completion) \
-      --zsh <(SHELL=/bin/zsh "$out/bin/opencode" completion)
+    for sh in bash zsh; do
+      SHELL=/bin/$sh "$out/bin/opencode" completion > "opencode.$sh" 2>/dev/null || true
+      if [ -s "opencode.$sh" ]; then
+        installShellCompletion --cmd opencode "--$sh" "opencode.$sh"
+      else
+        echo "opencode-bin: no $sh completion generated, skipping" >&2
+      fi
+    done
   '';
 
   # The binary carries bun's payload embedded in it, and on darwin the adhoc
