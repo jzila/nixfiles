@@ -19,6 +19,15 @@
   # merge, so keys set at runtime with `hermes config set` survive).
   services.hermes-agent.enable = true;
 
+  # Written to config.yaml as terminal.cwd, the directory the terminal and file
+  # tools work in. The module defaults it to $HOME, which suits the gateway
+  # service but pins an interactive `hermes` there wherever it's started; "."
+  # (Hermes's own default) resolves against the launch directory instead.
+  # The module also uses this as the systemd WorkingDirectory of the gateway
+  # and backend services, which needs an absolute path: if either is enabled,
+  # give it its own (e.g. TERMINAL_CWD in its environment) instead.
+  services.hermes-agent.workingDirectory = ".";
+
   services.hermes-agent.settings.model = {
     provider = "custom";
     base_url = "http://argo.local.zila.dev:11434/v1";
