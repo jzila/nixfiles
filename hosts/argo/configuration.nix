@@ -34,6 +34,17 @@
       # the same value: ollama reloads a model whenever a request needs a
       # different context size.
       OLLAMA_CONTEXT_LENGTH = "262144";
+      # Ollama passes LLAMA_ARG_* through to its llama-server runners but
+      # neither sets nor counts their host-RAM caches (ollama#18264), which at
+      # llama.cpp's defaults grew gemma4's runner to ~21 GiB of system RAM:
+      #   - prompt cache: copies of idle slots, kept to restore conversations
+      #     that lost their slot (default 8192 MiB, shared by all slots);
+      #   - context checkpoints: 200 MiB snapshots of gemma4's sliding-window
+      #     layers that let a slot rewind (default 32 per slot).
+      # Hermes and Home Assistant each hold one conversation, which stays in
+      # its slot; recent checkpoints cover the usual rewind to the last turn.
+      LLAMA_ARG_CACHE_RAM = "2048";
+      LLAMA_ARG_CTX_CHECKPOINTS = "4";
     };
     # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
     # gemma4 serves Home Assistant's Assist.
