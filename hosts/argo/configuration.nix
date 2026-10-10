@@ -24,11 +24,15 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
-      # Slots per model; each reserves its full context up front. qwen3.6
-      # (qwen35moe) is held to 1 slot by ollama regardless. Measured with both
-      # loaded at 262144 context (gemma4 4 slots, qwen3.6 1): 73.4 GiB of the
-      # 120 GiB the GPU may map (see boot.kernelParams).
-      OLLAMA_NUM_PARALLEL = "4";
+      # Slots per model; each reserves its full context up front (~5.6 GiB
+      # per gemma4 slot at 262144). qwen3.6 (qwen35moe) is held to 1 slot by
+      # ollama regardless ("architecture does not currently support parallel
+      # requests"), so opencode's qwen agent runs its subagents on gemma4 (see
+      # home/john/opencode.nix); 6 gemma4 slots leave room for those next to
+      # Hermes and Home Assistant. Measured with both loaded at 262144 context
+      # and 4 gemma4 slots: 73.5 GiB of the 120 GiB the GPU may map (see
+      # boot.kernelParams); 6 slots add ~11 GiB.
+      OLLAMA_NUM_PARALLEL = "6";
       # Default context for clients that can't set num_ctx (the OpenAI /v1
       # API, used by Hermes Agent). Keep Home Assistant's context window at
       # the same value: ollama reloads a model whenever a request needs a
