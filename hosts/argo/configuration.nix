@@ -7,6 +7,7 @@
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
+    ../../modules/hermes-container.nix
   ];
 
   # Networking configuration
@@ -23,7 +24,31 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
-      OLLAMA_NUM_PARALLEL = "4";
+      # Slots per model; each reserves its full context up front (~5.6 GiB
+      # per gemma4 slot at 262144). qwen3.6 (qwen35moe) is held to 1 slot by
+      # ollama regardless ("architecture does not currently support parallel
+      # requests"), so opencode's qwen agent runs its subagents on gemma4 (see
+      # home/john/opencode.nix); 6 gemma4 slots leave room for those next to
+      # Hermes and Home Assistant. Measured with both loaded at 262144 context
+      # and 4 gemma4 slots: 73.5 GiB of the 120 GiB the GPU may map (see
+      # boot.kernelParams); 6 slots add ~11 GiB.
+      OLLAMA_NUM_PARALLEL = "6";
+      # Default context for clients that can't set num_ctx (the OpenAI /v1
+      # API, used by Hermes Agent). Keep Home Assistant's context window at
+      # the same value: ollama reloads a model whenever a request needs a
+      # different context size.
+      OLLAMA_CONTEXT_LENGTH = "262144";
+      # Ollama passes LLAMA_ARG_* through to its llama-server runners but
+      # neither sets nor counts their host-RAM caches (ollama#18264), which at
+      # llama.cpp's defaults grew gemma4's runner to ~21 GiB of system RAM:
+      #   - prompt cache: copies of idle slots, kept to restore conversations
+      #     that lost their slot (default 8192 MiB, shared by all slots);
+      #   - context checkpoints: 200 MiB snapshots of gemma4's sliding-window
+      #     layers that let a slot rewind (default 32 per slot).
+      # Hermes and Home Assistant each hold one conversation, which stays in
+      # its slot; recent checkpoints cover the usual rewind to the last turn.
+      LLAMA_ARG_CACHE_RAM = "2048";
+      LLAMA_ARG_CTX_CHECKPOINTS = "4";
     };
     # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
     # gemma4 serves Home Assistant's Assist.
@@ -38,10 +63,17 @@
 
   # Boot configuration
   boot = {
+    # GPU memory is allocated dynamically from system RAM (GTT), as AMD
+    # recommends for Strix Halo: the BIOS reserves only the minimum (0.5 GB)
+    # for the GPU, and these cap how much RAM the GPU may map at 120 GiB of
+    # the 128, leaving 8 GiB it can never take from the OS. Ollama also
+    # assumes an integrated GPU's memory comes out of system RAM; a large BIOS
+    # reservation shrinks the RAM it checks against and keeps a second model
+    # from loading.
     kernelParams = [
       "amd_iommu=off"
-      "amdgpu.gttsize=131072"
-      "ttm.pages_limit=33554432"
+      "amdgpu.gttsize=122880" # MiB
+      "ttm.pages_limit=31457280" # 4 KiB pages
     ];
     # Framework Desktop specific kernel modules config if needed
     extraModprobeConfig = ''

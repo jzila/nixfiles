@@ -4,3 +4,6 @@ netboot-files/
 
 **/CLAUDE.local.md
 .kata.local.toml
+
+# Local scratch scripts, never committed
+.scratch/
