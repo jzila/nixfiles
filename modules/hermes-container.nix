@@ -54,6 +54,36 @@ in
     enable = true;
     internalInterfaces = [ "ve-hermes" ];
   };
+
+  # Network grants for the container, like the bindMounts below for files:
+  #   - to the host: ollama only. Inserted ahead of the host's allowedTCPPorts,
+  #     which apply on every interface and would otherwise also open Piper,
+  #     Parakeet and dev ports to the container.
+  #   - forwarded: DNS to Pi-hole and the router, nothing else on private or
+  #     local ranges (LAN, Tailscale CGNAT, link-local, multicast), internet
+  #     otherwise (Signal, web tools).
+  networking.firewall.extraCommands = ''
+    iptables -w -N hermes-to-host 2>/dev/null || iptables -w -F hermes-to-host
+    iptables -w -A hermes-to-host -p tcp --dport 11434 -j nixos-fw-accept
+    iptables -w -A hermes-to-host -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
+    iptables -w -A hermes-to-host -j nixos-fw-refuse
+    iptables -w -I nixos-fw 1 -i ve-hermes -j hermes-to-host
+
+    iptables -w -N hermes-egress 2>/dev/null || iptables -w -F hermes-egress
+    for resolver in 192.168.1.135 192.168.1.1; do
+      for proto in udp tcp; do
+        iptables -w -A hermes-egress -d "$resolver" -p "$proto" --dport 53 -j RETURN
+      done
+    done
+    for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
+      iptables -w -A hermes-egress -d "$net" -j REJECT
+    done
+    iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
+    iptables -w -I FORWARD 1 -i ve-hermes -j hermes-egress
+  '';
+  networking.firewall.extraStopCommands = ''
+    iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
+  '';
   # Leave the container's veth to the container configuration.
   networking.networkmanager.unmanaged = [ "interface-name:ve-*" ];
 
