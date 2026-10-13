@@ -159,6 +159,44 @@
     10300 # wyoming-faster-whisper (Parakeet)
   ];
 
+  # The family dataset on the TrueNAS box, over NFS. The export is limited
+  # to argo's wired IP (192.168.1.237; keep it fixed with a DHCP
+  # reservation) and maps every request to one TrueNAS user (mapall), since
+  # sec=sys can't verify argo's uids anyway. Automounted so boot doesn't hang
+  # if the NAS is down.
+  fileSystems."/mnt/zila-family" = {
+    device = "truenas.local.zila.dev:/mnt/data/zila-family";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      # Several TCP connections per mount, so one client can use more than
+      # one stream's worth of the NAS's 10GbE.
+      "nconnect=4"
+      "rsize=1048576"
+      "wsize=1048576"
+      "noauto"
+      "x-systemd.automount"
+      "x-systemd.mount-timeout=30"
+      "_netdev"
+    ];
+  };
+
+  # Google Drive, synced both ways with drive/ on that dataset. argo runs it
+  # because it's always on; no other machine keeps a copy. Needs the
+  # `gdrive` rclone remote set up once (see modules/gdrive.nix).
+  home-manager.users.john.services.gdrive.bisync = {
+    enable = true;
+    target = "/mnt/zila-family/drive";
+    # Push argo's own writes there within seconds. (Other clients' writes
+    # over SMB/NFS are invisible to inotify here and wait for the timer.)
+    watch.enable = true;
+    # Up to 100 files in flight. Most of Drive is 1-5 MB photos, where
+    # per-file request latency, not bandwidth, sets the pace at rclone's
+    # default of 4. (The drive backend's own API pacer, ~10 calls/s by
+    # default, still caps how fast new small files start.)
+    extraArgs = [ "--transfers" "100" ];
+  };
+
   # NixOS state version
   system.stateVersion = "23.11";
 }
