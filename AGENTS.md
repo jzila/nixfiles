@@ -60,16 +60,7 @@ The system includes development tools installed via both NixOS packages and Home
 
 ## Development Workflow
 
-### Branches and worktrees
-All branch work happens in a git worktree under `.agent-worktrees/`, never in the main checkout, which stays on `main`:
-
-```bash
-git worktree add .agent-worktrees/<branch> -b <branch> origin/main   # new branch
-git worktree add .agent-worktrees/<branch> <branch>                  # existing branch
-git worktree remove .agent-worktrees/<branch>                        # once merged
-```
-
-`.agent-worktrees/` is gitignored except for its `.keep`. Run commands from inside the worktree; `nixos-rebuild switch --flake .#<host>` there deploys that branch.
+Do all branch work in a git worktree under `.agent-worktrees/` (gitignored); keep the main checkout on `main`.
 
 Since Home Manager is integrated into the system flake, any changes to user packages, shell configuration, or dotfiles require a full system rebuild with `sudo nixos-rebuild switch --flake .#venator`. There are no separate `home-manager switch` commands.
 
