@@ -149,6 +149,16 @@ in
             # Always ask before dangerous commands (the default "smart" lets a
             # helper model approve some by itself).
             approvals.mode = "manual";
+            # Kanban tools are hidden from chats unless the platform opts in,
+            # so without this Hermes "records" tasks in its per-session
+            # todo_list, which is gone once the conversation ends.
+            platform_toolsets = {
+              signal = [ "hermes-signal" "kanban" ];
+              cli = [ "hermes-cli" "kanban" ];
+            };
+            # The board is a task list, not a work queue: don't let the
+            # gateway spawn workers that act on tasks by themselves.
+            kanban.dispatch_in_gateway = false;
           };
         };
       };
