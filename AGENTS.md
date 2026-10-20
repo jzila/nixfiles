@@ -60,6 +60,8 @@ The system includes development tools installed via both NixOS packages and Home
 
 ## Development Workflow
 
+Do all branch work in a git worktree under `.agent-worktrees/` (gitignored); keep the main checkout on `main`.
+
 Since Home Manager is integrated into the system flake, any changes to user packages, shell configuration, or dotfiles require a full system rebuild with `sudo nixos-rebuild switch --flake .#venator`. There are no separate `home-manager switch` commands.
 
 The configuration references external dotfiles in `/home/john/repos/dotfiles/` for Zsh and Tmux configurations.

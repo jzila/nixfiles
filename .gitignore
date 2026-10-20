@@ -7,3 +7,7 @@ netboot-files/
 
 # Local scratch scripts, never committed
 .scratch/
+
+# Git worktrees for branch work (see AGENTS.md); only the directory is tracked.
+.agent-worktrees/*
+!.agent-worktrees/.keep
