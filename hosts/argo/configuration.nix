@@ -181,6 +181,23 @@
     ];
   };
 
+  # The backup dataset on the same box, exported and mounted the same way
+  # (argo-only, mapall).
+  fileSystems."/mnt/john-backup" = {
+    device = "truenas.local.zila.dev:/mnt/data/john-backup";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      "nconnect=4"
+      "rsize=1048576"
+      "wsize=1048576"
+      "noauto"
+      "x-systemd.automount"
+      "x-systemd.mount-timeout=30"
+      "_netdev"
+    ];
+  };
+
   # Google Drive, synced both ways with drive/ on that dataset. argo runs it
   # because it's always on; no other machine keeps a copy. Needs the
   # `gdrive` rclone remote set up once (see modules/gdrive.nix).
