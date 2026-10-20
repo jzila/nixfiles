@@ -103,6 +103,7 @@ in
     ./opencode.nix
   ] ++ lib.optionals isLinux [
     ../../modules/plasma/plasma.nix
+    ../../modules/gdrive.nix
   ];
 
   home.username = "john";
