@@ -39,14 +39,13 @@ The system includes development tools installed via both NixOS packages and Home
 ### Configuration Organization
 - `hosts/venator/` - System-specific configuration for main laptop
 - `home/john/` - User-specific Home Manager configuration  
-- `modules/` - Reusable modules (Plasma, Ollama containers, agentsview service)
+- `modules/` - Reusable modules (Plasma, Ollama containers)
 - Host imports nixos-hardware module for ASUS Zephyrus GA402 optimizations
 
 ### Key Integration Points
 - Home Manager users defined in flake.nix via `home-manager.users.john`
 - All flake inputs available to modules via `specialArgs = inputs` pattern
 - Plasma configuration modularized in `modules/plasma/` with plasma-manager integration
-- `modules/agentsview.nix` exposes `services.agentsview.{enable, package, port, host, extraArgs, updateCheck}`, a Home Manager module that runs `agentsview serve` as a launchd agent on darwin and a systemd user service on linux, on port 8420 by default
 - `modules/gdrive.nix` exposes `services.gdrive.{mount, bisync}`, a Linux-only Home Manager module for Google Drive via rclone: `mount` is an on-demand FUSE mount at `~/GoogleDrive`, on by default on every Linux host that doesn't run `bisync`; `bisync` is a two-way sync with `bisync.target` on a timer, plus an inotify `watch` for local writes (argo, Drive ↔ `/mnt/zila-family/drive`, the TrueNAS `zila-family` dataset over NFS). rclone's OAuth token lives in the unmanaged `~/.config/rclone/rclone.conf`, never in the repo; services wait until it exists
 - `modules/ha-gitops.nix` (argo) runs the GitHub Actions runners for the private `jzila/home-assistant` repo (Home Assistant declared with OpenTofu): `ha` holds the HA credentials from root-only `/etc/ha-tofu` and a job-started hook refuses anything not from `main`; `ha-pr` plans PRs with no credentials; nightly drift is filed on the hass kanban board
 - Container infrastructure with Podman configured at system level
@@ -78,4 +77,4 @@ The configuration references external dotfiles in `/home/john/repos/dotfiles/` f
 - Always run `nix flake update` after changing input URLs in flake.nix
 - The flake uses `@inputs` pattern to make all inputs available to modules
 - Custom package sets (pkgs-unstable, pkgs-jzila) are merged with inputs in specialArgs
-- The release-archive packages under `./pkgs/` (opencode-bin, roborev-bin, agentsview-bin, kata-bin, ollama-rocm-bin on x86_64-linux, zed-editor-bin on darwin) are defined once, via `mkLocalPackages` in flake.nix; that same set backs the `packages.<system>` flake output and is handed to both NixOS and Home Manager as the `localPkgs` specialArg, so `home/john/home.nix` references `localPkgs.<name>` instead of calling `callPackage` on `./pkgs/*` a second time
+- The release-archive packages under `./pkgs/` (opencode-bin, roborev-bin, kata-bin, ollama-rocm-bin on x86_64-linux, zed-editor-bin on darwin) are defined once, via `mkLocalPackages` in flake.nix; that same set backs the `packages.<system>` flake output and is handed to both NixOS and Home Manager as the `localPkgs` specialArg, so `home/john/home.nix` references `localPkgs.<name>` instead of calling `callPackage` on `./pkgs/*` a second time
