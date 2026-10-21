@@ -31,7 +31,8 @@ let
   # given events. A failing hook fails the job before any step runs.
   guard =
     name: events:
-    pkgs.writeShellScript "${name}-guard" ''
+    # The runner only accepts hooks ending in .sh, .ps1 or .js.
+    pkgs.writeShellScript "${name}-guard.sh" ''
       fail() { echo "${name} runner: refusing this job: $*" >&2; exit 1; }
       [ "''${GITHUB_REPOSITORY:-}" = ${repo} ] || fail "repository ''${GITHUB_REPOSITORY:-?}"
       [ "''${GITHUB_REF:-}" = refs/heads/main ] || fail "ref ''${GITHUB_REF:-?} is not main"
