@@ -11,7 +11,7 @@ attention:
                   "error": "...", "issues": ["renewal_failed"]}]}
 
 The list is reconciled against the board, without the agent: one open task per
-item on tenant "home" (created if missing, its body refreshed if the issues
+item on tenant "hass" (created if missing, its body refreshed if the issues
 changed), and tasks for devices no longer listed are completed. Prints
 [SILENT] so Hermes drops the webhook instead of starting an agent turn.
 
@@ -23,7 +23,7 @@ import re
 import subprocess
 import sys
 
-TENANT = "home"
+TENANT = "hass"
 # kind -> (task title prefix, issue -> description)
 KINDS = {
     "zwave_battery": ("Z-Wave battery", {
