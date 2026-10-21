@@ -112,9 +112,6 @@
         # roborev from the official release archive. Upstream dropped the
         # flake it used to ship, and there is no nixpkgs package.
         roborev-bin = pkgs-unstable.callPackage ./pkgs/roborev-bin { };
-        # agentsview from the official release archive, for the same reason:
-        # no flake upstream and no nixpkgs package.
-        agentsview-bin = pkgs-unstable.callPackage ./pkgs/agentsview-bin { };
         # kata from the official release archive, same story.
         kata-bin = pkgs-unstable.callPackage ./pkgs/kata-bin { };
       } // lib.optionalAttrs (pkgs-unstable.stdenv.hostPlatform.system == "x86_64-linux") {
