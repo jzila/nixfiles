@@ -22,13 +22,33 @@
 #     repo) is mounted read-only into the container. Hermes's activation merges
 #     it into $HERMES_HOME/.env, which the hermes group can read, so keep only
 #     values john may see there (bot number, allowlist, the signal-cli URL).
-{ lib, hermes-agent, ... }:
+#   - Webhooks: Home Assistant (and only it) reaches Hermes's webhook receiver
+#     through nginx in the container on :8645, over mutual TLS with
+#     certificates from the step CA: nginx requires a client certificate for
+#     Home Assistant's name, and the receiver itself listens on the
+#     container's loopback. The server certificate lives in /etc/hermes-tls on
+#     the host (root plus the container nginx's group, which shares the host's
+#     IDs; issued once by hand, renewed by a timer).
+{ config, lib, pkgs, hermes-agent, ... }:
 let
   hostAddress = "10.233.1.1";
   localAddress = "10.233.1.2";
   hermesId = 870;
   signalCliId = 871;
   stateDir = "/var/lib/hermes";
+
+  # Mutual-TLS webhook ingress from Home Assistant.
+  webhookPort = 8645;
+  # An address, not a name: iptables resolves names once, at load, and the
+  # firewall fails to start if DNS isn't up yet. The client certificate is
+  # what authenticates.
+  homeAssistantAddress = "192.168.1.153";
+  homeAssistantCertName = "homeassistant.local.zila.dev";
+  tlsDir = "/etc/hermes-tls";
+  stepRootCa = ./ssh-ca/root_ca.crt;
+  # The container shares the host's IDs, so its nginx reads the bind-mounted
+  # certificate as this group.
+  nginxGid = toString config.ids.gids.nginx;
 in
 {
   # ── Host side ─────────────────────────────────────────────────────────────
@@ -48,7 +68,40 @@ in
     # Created empty if missing, so the container can start before the secrets
     # are filled in.
     "f /etc/hermes/gateway.env 0600 root root -"
+    "d ${tlsDir} 0750 root ${nginxGid} -"
+    "z ${tlsDir}/server.crt 0640 root ${nginxGid} -"
+    "z ${tlsDir}/server.key 0640 root ${nginxGid} -"
   ];
+
+  # The webhook server certificate is issued by hand for 30 days
+  # (--not-after 720h); renewal keeps that lifetime. Check daily and renew in
+  # the last 7 days (renewal authenticates with the current certificate, no
+  # password), then have nginx pick it up, starting it if it was waiting.
+  systemd.services.hermes-tls-renew = {
+    description = "Renew the Hermes webhook TLS certificate";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    serviceConfig.Type = "oneshot";
+    path = [ pkgs.step-cli config.systemd.package pkgs.nixos-container ];
+    script = ''
+      [ -s ${tlsDir}/server.crt ] || exit 0
+      step ca renew --force --expires-in 168h \
+        --ca-url ${config.services.ssh-ca.caUrl} --root ${stepRootCa} \
+        ${tlsDir}/server.crt ${tlsDir}/server.key
+      chown root:${nginxGid} ${tlsDir}/server.crt ${tlsDir}/server.key
+      chmod 0640 ${tlsDir}/server.crt ${tlsDir}/server.key
+      # Also picks up a certificate reissued by hand.
+      nixos-container run hermes -- systemctl reload-or-restart nginx
+    '';
+  };
+  systemd.timers.hermes-tls-renew = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "daily";
+      Persistent = true;
+      RandomizedDelaySec = "1h";
+    };
+  };
 
   networking.nat = {
     enable = true;
@@ -61,7 +114,10 @@ in
   #     Parakeet and dev ports to the container.
   #   - forwarded: DNS to Pi-hole and the router, nothing else on private or
   #     local ranges (LAN, Tailscale CGNAT, link-local, multicast), internet
-  #     otherwise (Signal, web tools).
+  #     otherwise (Signal, web tools). Replies to connections made to the
+  #     container are allowed.
+  #   - inbound: the webhook port, DNATed to the container for Home
+  #     Assistant's address only.
   networking.firewall.extraCommands = ''
     iptables -w -N hermes-to-host 2>/dev/null || iptables -w -F hermes-to-host
     iptables -w -A hermes-to-host -p tcp --dport 11434 -j nixos-fw-accept
@@ -70,6 +126,7 @@ in
     iptables -w -I nixos-fw 1 -i ve-hermes -j hermes-to-host
 
     iptables -w -N hermes-egress 2>/dev/null || iptables -w -F hermes-egress
+    iptables -w -A hermes-egress -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
     for resolver in 192.168.1.135 192.168.1.1; do
       for proto in udp tcp; do
         iptables -w -A hermes-egress -d "$resolver" -p "$proto" --dport 53 -j RETURN
@@ -80,6 +137,12 @@ in
     done
     iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
     iptables -w -I FORWARD 1 -i ve-hermes -j hermes-egress
+
+    iptables -w -t nat -N hermes-ingress 2>/dev/null || iptables -w -t nat -F hermes-ingress
+    iptables -w -t nat -A hermes-ingress -s ${homeAssistantAddress} -p tcp --dport ${toString webhookPort} \
+      -m addrtype --dst-type LOCAL -j DNAT --to-destination ${localAddress}:${toString webhookPort}
+    iptables -w -t nat -D PREROUTING -j hermes-ingress 2>/dev/null || true
+    iptables -w -t nat -I PREROUTING 1 -j hermes-ingress
   '';
   # Also run before every reload. The chains must go, not just their jumps:
   # hermes-to-host's rules reference nixos-fw-accept/-refuse, which the
@@ -87,11 +150,14 @@ in
   # fail and the reload falls back to stopping the firewall altogether.
   networking.firewall.extraStopCommands = ''
     iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
+    iptables -w -t nat -D PREROUTING -j hermes-ingress 2>/dev/null || true
     iptables -w -D nixos-fw -i ve-hermes -j hermes-to-host 2>/dev/null || true
     for chain in hermes-to-host hermes-egress; do
       iptables -w -F "$chain" 2>/dev/null || true
       iptables -w -X "$chain" 2>/dev/null || true
     done
+    iptables -w -t nat -F hermes-ingress 2>/dev/null || true
+    iptables -w -t nat -X hermes-ingress 2>/dev/null || true
   '';
   # Leave the container's veth to the container configuration.
   networking.networkmanager.unmanaged = [ "interface-name:ve-*" ];
@@ -110,12 +176,16 @@ in
         hostPath = "/etc/hermes";
         isReadOnly = true;
       };
+      "/run/host-secrets/hermes-tls" = {
+        hostPath = tlsDir;
+        isReadOnly = true;
+      };
       # Access grants go here, one per folder, e.g.:
       #   "/grants/notes" = { hostPath = "/home/john/notes"; isReadOnly = true; };
     };
 
     config =
-      { ... }:
+      { config, ... }:
       {
         imports = [
           hermes-agent.nixosModules.default
@@ -134,6 +204,57 @@ in
         users.users.hermes.uid = hermesId;
         users.groups.signal-cli.gid = signalCliId;
         users.users.signal-cli.uid = signalCliId;
+
+        # TLS front for the webhook receiver.
+        networking.firewall.allowedTCPPorts = [ webhookPort ];
+        services.nginx = {
+          enable = true;
+          recommendedTlsSettings = true;
+          recommendedProxySettings = true;
+          virtualHosts.hermes-webhooks = {
+            onlySSL = true;
+            listen = [
+              {
+                addr = "0.0.0.0";
+                port = webhookPort;
+                ssl = true;
+              }
+            ];
+            sslCertificate = "/run/host-secrets/hermes-tls/server.crt";
+            sslCertificateKey = "/run/host-secrets/hermes-tls/server.key";
+            extraConfig = ''
+              ssl_client_certificate ${stepRootCa};
+              ssl_verify_client on;
+              ssl_verify_depth 2;
+              # Any certificate the step CA signed passes ssl_verify_client;
+              # only Home Assistant's may post.
+              if ($ssl_client_s_dn != "CN=${homeAssistantCertName}") {
+                return 403;
+              }
+            '';
+            locations."= /webhooks/ha-maintenance".proxyPass = "http://127.0.0.1:8644";
+            locations."/".return = "404";
+          };
+        };
+        # Wait for the certificate instead of failing; hermes-tls-renew on the
+        # host starts nginx once one exists.
+        systemd.services.nginx.unitConfig.ConditionPathExists = "/run/host-secrets/hermes-tls/server.crt";
+
+        # Webhook route scripts must live under $HERMES_HOME/scripts (symlinks
+        # out of it are refused), so copy them in on every start; a changed
+        # script changes the unit, which restarts it. (tmpfiles' C+ never
+        # replaces an existing file.)
+        systemd.tmpfiles.rules = [
+          "d ${stateDir}/.hermes/scripts 2770 hermes hermes -"
+        ];
+        systemd.services.hermes-agent.preStart = lib.mkAfter ''
+          install -m 0444 ${
+            pkgs.replaceVars ./hermes-scripts/ha-maintenance.py {
+              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
+            }
+          } ${stateDir}/.hermes/scripts/.ha-maintenance.py.new
+          mv -f ${stateDir}/.hermes/scripts/.ha-maintenance.py.new ${stateDir}/.hermes/scripts/ha-maintenance.py
+        '';
 
         services.hermes-agent = {
           enable = true;
@@ -168,6 +289,23 @@ in
             # The board is a task list, not a work queue: don't let the
             # gateway spawn workers that act on tasks by themselves.
             kanban.dispatch_in_gateway = false;
+            # Webhook receiver, reachable only through nginx above (loopback
+            # is also the only bind Hermes allows without request signing;
+            # mutual TLS authenticates instead). ha-maintenance's script
+            # turns Home Assistant's device list into kanban tasks without
+            # an agent turn.
+            platforms.webhook = {
+              enabled = true;
+              extra = {
+                host = "127.0.0.1";
+                port = 8644;
+                routes.ha-maintenance = {
+                  secret = "INSECURE_NO_AUTH";
+                  script = "ha-maintenance.py";
+                  deliver = "log";
+                };
+              };
+            };
           };
         };
       };
