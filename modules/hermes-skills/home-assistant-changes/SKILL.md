@@ -63,9 +63,8 @@ PRs.
    change). If the plan fails, read it, fix the branch, push, and report again.
 6. **Merge after approval only.** When John has approved
    (`gh pr view <n> --json reviewDecision` is `APPROVED`) and the checks pass,
-   merge with `gh pr merge <n> --merge`. Never push to the branch after John
-   approves: a new push needs a new approval. If he asks for changes, push them
-   and go back to step 5.
+   merge with `gh pr merge <n> --merge`. If he asks for changes, push them and
+   go back to step 5 (a push resets his approval).
 7. **Confirm the apply.** The merge starts the `apply` check on the merge commit
    (`gh api repos/jzila/home-assistant/commits/<sha>/check-runs`). Tell John
    whether it succeeded; if it failed, say so with the check's name and URL.
