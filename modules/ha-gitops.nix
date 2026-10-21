@@ -63,8 +63,15 @@ let
         mapfile -t commits < <(git rev-parse HEAD)
       fi
       for c in "''${commits[@]}"; do
-        n=$(gh api "repos/$repo/commits/$c/pulls" \
-          --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$c\")][0].number // empty")
+        # GitHub links a merge commit to its PR a few seconds after the merge,
+        # and this can run sooner: wait up to two minutes for the link.
+        n=
+        for _ in $(seq 12); do
+          n=$(gh api "repos/$repo/commits/$c/pulls" \
+            --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$c\")][0].number // empty")
+          [ -n "$n" ] && break
+          sleep 10
+        done
         [ -n "$n" ] || fail "$c is not the merge commit of a pull request"
         read -r merged_by head < <(gh api "repos/$repo/pulls/$n" --jq '"\(.merged_by.login) \(.head.sha)"')
         if [ "$merged_by" = jzila ]; then
