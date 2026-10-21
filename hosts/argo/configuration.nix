@@ -81,6 +81,14 @@
     '';
   };
 
+  # The Dell U3225QE's built-in Thunderbolt 4 hub (Goshen Ridge PCIe bridges)
+  # has nothing downstream, so runtime PM suspends and resumes it several
+  # times a second. That churn parks kworkers in D state on the pm
+  # workqueue and made input lag over the same USB4 link that carries the
+  # display. Keep the bridges awake.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x0b26", ATTR{power/control}="on"
+  '';
 
   # Graphics configuration for AMD Ryzen AI Max 300 series
   services.xserver.videoDrivers = [ "amdgpu" ];
