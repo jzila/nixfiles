@@ -1,7 +1,7 @@
 ---
 name: home-assistant-changes
 description: Change Home Assistant's configuration through a pull request on jzila/home-assistant.
-version: 1.1.0
+version: 1.2.0
 author: John Zila
 platforms: [linux]
 metadata:
@@ -17,7 +17,9 @@ labels, device/entity settings, `/config` files) lives in `jzila/home-assistant`
 Change it only through a pull request there, never through Home Assistant's API
 or UI. Controlling devices and reading states is fine as usual.
 
-`git` and `gh` are authenticated as the `zila-hermes` app.
+`git` and `gh` are authenticated as the `zila-hermes` app. Hand steps 1–3 to a
+subagent with `delegate_task` (it runs on the coding model), passing John's
+request and these steps; relay its PR and plan to John, and do step 4 yourself.
 
 1. In `/var/lib/hermes/workspace/home-assistant` (clone it if missing), branch
    from the latest `origin/main`.
