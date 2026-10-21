@@ -81,8 +81,17 @@ in
     iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
     iptables -w -I FORWARD 1 -i ve-hermes -j hermes-egress
   '';
+  # Also run before every reload. The chains must go, not just their jumps:
+  # hermes-to-host's rules reference nixos-fw-accept/-refuse, which the
+  # firewall deletes and recreates, so a leftover hermes-to-host makes that
+  # fail and the reload falls back to stopping the firewall altogether.
   networking.firewall.extraStopCommands = ''
     iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
+    iptables -w -D nixos-fw -i ve-hermes -j hermes-to-host 2>/dev/null || true
+    for chain in hermes-to-host hermes-egress; do
+      iptables -w -F "$chain" 2>/dev/null || true
+      iptables -w -X "$chain" 2>/dev/null || true
+    done
   '';
   # Leave the container's veth to the container configuration.
   networking.networkmanager.unmanaged = [ "interface-name:ve-*" ];
