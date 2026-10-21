@@ -29,6 +29,12 @@
 #     container's loopback. The server certificate lives in /etc/hermes-tls on
 #     the host (root plus the container nginx's group, which shares the host's
 #     IDs; issued once by hand, renewed by a timer).
+#   - GitHub: Hermes acts as the zila-hermes GitHub App (installed on
+#     jzila/home-assistant and jzila/nixfiles; no workflow permission, can't
+#     bypass the main rulesets). The app's private key stays on the host
+#     (/etc/hermes/github-app.pem, root 0600); a timer mints a one-hour
+#     installation token every 30 minutes into /run/hermes-github, which the
+#     container sees read-only and git and gh read on every call.
 { config, lib, pkgs, hermes-agent, ... }:
 let
   hostAddress = "10.233.1.1";
@@ -49,6 +55,12 @@ let
   # The container shares the host's IDs, so its nginx reads the bind-mounted
   # certificate as this group.
   nginxGid = toString config.ids.gids.nginx;
+
+  # GitHub App credentials (see the header).
+  githubAppId = "5415128";
+  githubTokenDir = "/run/hermes-github";
+  githubBotName = "zila-hermes[bot]";
+  githubBotEmail = "345981252+zila-hermes[bot]@users.noreply.github.com";
 in
 {
   # ── Host side ─────────────────────────────────────────────────────────────
@@ -68,6 +80,7 @@ in
     # Created empty if missing, so the container can start before the secrets
     # are filled in.
     "f /etc/hermes/gateway.env 0600 root root -"
+    "d ${githubTokenDir} 0750 root hermes -"
     "d ${tlsDir} 0750 root ${nginxGid} -"
     "z ${tlsDir}/server.crt 0640 root ${nginxGid} -"
     "z ${tlsDir}/server.key 0640 root ${nginxGid} -"
@@ -100,6 +113,36 @@ in
       OnCalendar = "daily";
       Persistent = true;
       RandomizedDelaySec = "1h";
+    };
+  };
+
+  # Mint the GitHub App's installation token (an hour's life) for the container.
+  systemd.services.hermes-github-token = {
+    description = "Mint Hermes's GitHub App installation token";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    path = [ pkgs.openssl pkgs.curl pkgs.jq pkgs.coreutils ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      set -euo pipefail
+      b64() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+      now=$(date +%s)
+      unsigned="$(printf '{"alg":"RS256","typ":"JWT"}' | b64).$(printf '{"iat":%d,"exp":%d,"iss":"${githubAppId}"}' $((now - 60)) $((now + 540)) | b64)"
+      jwt="$unsigned.$(printf %s "$unsigned" | openssl dgst -sha256 -sign /etc/hermes/github-app.pem | b64)"
+      api() { curl -sS --fail -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" "$@"; }
+      installation=$(api https://api.github.com/app/installations | jq -r '.[] | select(.account.login == "jzila") | .id')
+      token=$(api -X POST "https://api.github.com/app/installations/$installation/access_tokens" | jq -r .token)
+      umask 027
+      printf %s "$token" >${githubTokenDir}/token.new
+      chgrp hermes ${githubTokenDir}/token.new
+      mv ${githubTokenDir}/token.new ${githubTokenDir}/token
+    '';
+  };
+  systemd.timers.hermes-github-token = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "30min";
     };
   };
 
@@ -180,6 +223,10 @@ in
         hostPath = tlsDir;
         isReadOnly = true;
       };
+      "/run/host-secrets/github" = {
+        hostPath = githubTokenDir;
+        isReadOnly = true;
+      };
       # Access grants go here, one per folder, e.g.:
       #   "/grants/notes" = { hostPath = "/home/john/notes"; isReadOnly = true; };
     };
@@ -202,6 +249,19 @@ in
 
         users.groups.hermes.gid = hermesId;
         users.users.hermes.uid = hermesId;
+
+        # GitHub as the zila-hermes app: git and gh read the host-minted
+        # installation token on every call, so a rotated token is picked up
+        # without a restart.
+        programs.git = {
+          enable = true;
+          config = {
+            user.name = githubBotName;
+            user.email = githubBotEmail;
+            credential."https://github.com".helper =
+              "!f() { [ \"$1\" = get ] && echo username=x-access-token && echo password=$(cat /run/host-secrets/github/token); }; f";
+          };
+        };
         users.groups.signal-cli.gid = signalCliId;
         users.users.signal-cli.uid = signalCliId;
 
@@ -258,6 +318,14 @@ in
 
         services.hermes-agent = {
           enable = true;
+          extraPackages = [
+            (pkgs.writeShellScriptBin "gh" ''
+              GH_TOKEN=$(cat /run/host-secrets/github/token) exec ${lib.getExe pkgs.gh} "$@"
+            '')
+          ];
+          # Skills this repo maintains, installed into $HERMES_HOME/skills.
+          hermesHomeFiles."skills/devops/home-assistant-changes/SKILL.md" =
+            ./hermes-skills/home-assistant-changes/SKILL.md;
           inherit stateDir;
           # Shared-state permissions: config.yaml group-writable, so the host
           # CLI can save settings.
