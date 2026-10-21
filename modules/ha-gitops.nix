@@ -13,6 +13,10 @@
 #   state-passphrase  OpenTofu state encryption                    (both)
 #   runner-token      one-hour registration token, consumed at first start
 #
+# Approval is enforced by the repo's main ruleset at merge time (PR required,
+# John's review as code owner, only John bypasses), so the runner applies
+# whatever reaches main.
+#
 # Drift found by the nightly workflow lands in /var/lib/ha-tofu/drift/report.md
 # and is filed on the hass kanban board.
 { lib, pkgs, hermes-agent, ... }:
@@ -46,39 +50,6 @@ let
       esac
       echo "${name} runner: $GITHUB_WORKFLOW_REF, $GITHUB_EVENT_NAME"
     '';
-
-  # Before applying: every commit on main's first-parent line since the last
-  # apply must be a PR merge that John merged, or that he approved at its final
-  # commit. Lives here, not in the repo it guards.
-  verify = pkgs.writeShellApplication {
-    name = "ha-gitops-verify";
-    runtimeInputs = with pkgs; [ gh git jq coreutils ];
-    text = ''
-      repo=${repo}
-      fail() { echo "ha-gitops-verify: $*" >&2; exit 1; }
-      applied=$(cat ${stateDir}/applied 2>/dev/null || true)
-      if [ -n "$applied" ] && git merge-base --is-ancestor "$applied" HEAD; then
-        mapfile -t commits < <(git rev-list --first-parent "$applied..HEAD")
-      else
-        mapfile -t commits < <(git rev-parse HEAD)
-      fi
-      for c in "''${commits[@]}"; do
-        n=$(gh api "repos/$repo/commits/$c/pulls" \
-          --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$c\")][0].number // empty")
-        [ -n "$n" ] || fail "$c is not the merge commit of a pull request"
-        read -r merged_by head < <(gh api "repos/$repo/pulls/$n" --jq '"\(.merged_by.login) \(.head.sha)"')
-        if [ "$merged_by" = jzila ]; then
-          echo "$c: #$n, merged by jzila"
-          continue
-        fi
-        approvals=$(gh api --paginate "repos/$repo/pulls/$n/reviews" \
-          --jq "[.[] | select(.user.login == \"jzila\" and .state == \"APPROVED\" and .commit_id == \"$head\")] | length" \
-          | jq -s add)
-        [ "''${approvals:-0}" -gt 0 ] || fail "$c: #$n was merged by $merged_by without jzila's approval of its final commit"
-        echo "$c: #$n, approved by jzila, merged by $merged_by"
-      done
-    '';
-  };
 
   common = {
     enable = true;
@@ -118,7 +89,6 @@ in
     extraLabels = [ "ha" ];
     user = "ha-tofu";
     group = "ha-tofu";
-    extraPackages = common.extraPackages ++ [ verify ];
     extraEnvironment = environment // {
       ACTIONS_RUNNER_HOOK_JOB_STARTED = guard "ha" [
         "push"
