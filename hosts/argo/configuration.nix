@@ -49,6 +49,11 @@
       # its slot; recent checkpoints cover the usual rewind to the last turn.
       LLAMA_ARG_CACHE_RAM = "2048";
       LLAMA_ARG_CTX_CHECKPOINTS = "4";
+      # Unload idle models after 10 minutes. A loaded qwen3.6 holds the GPU
+      # at 100% busy and full clock even when idle, which squeezes the CPU's
+      # share of the SoC power budget and lags the desktop. gemma4 is pinned
+      # instead; see ollama-pin-gemma below.
+      OLLAMA_KEEP_ALIVE = "10m";
     };
     # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
     # gemma4 serves Home Assistant's Assist.
@@ -56,6 +61,32 @@
       "qwen3.6:35b-a3b"
       "gemma4:26b-a4b"
     ];
+  };
+
+  # Keep gemma4 loaded for Home Assistant and Hermes. Ollama has no
+  # per-model keep-alive, and every request resets a model's expiry to the
+  # request's keep_alive or OLLAMA_KEEP_ALIVE (Hermes' /v1 requests can't set
+  # one), so re-pin it more often than the 10-minute default expires.
+  systemd.services.ollama-pin-gemma = {
+    description = "Keep gemma4 loaded in ollama";
+    after = [ "ollama.service" "ollama-model-loader.service" ];
+    requires = [ "ollama.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      DynamicUser = true;
+    };
+    script = ''
+      ${pkgs.curl}/bin/curl -fsS --retry 10 --retry-connrefused --retry-delay 5 \
+        http://127.0.0.1:11434/api/generate \
+        -d '{"model":"gemma4:26b-a4b","keep_alive":-1}' >/dev/null
+    '';
+  };
+  systemd.timers.ollama-pin-gemma = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "5min";
+    };
   };
 
   # Enable ROCm support for AMD graphics
