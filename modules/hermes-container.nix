@@ -322,6 +322,8 @@ in
             (pkgs.writeShellScriptBin "gh" ''
               GH_TOKEN=$(cat /run/host-secrets/github/token) exec ${lib.getExe pkgs.gh} "$@"
             '')
+            # search_files refuses broad searches without it.
+            pkgs.ripgrep
           ];
           # Skills this repo maintains, installed into $HERMES_HOME/skills.
           hermesHomeFiles."skills/devops/home-assistant-changes/SKILL.md" =
