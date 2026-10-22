@@ -326,8 +326,12 @@ in
             pkgs.ripgrep
           ];
           # Skills this repo maintains, installed into $HERMES_HOME/skills.
-          hermesHomeFiles."skills/devops/home-assistant-changes/SKILL.md" =
-            ./hermes-skills/home-assistant-changes/SKILL.md;
+          hermesHomeFiles = {
+            "skills/devops/home-assistant-changes/SKILL.md" =
+              ./hermes-skills/home-assistant-changes/SKILL.md;
+            "skills/devops/home-assistant-changes/references/make-pr.md" =
+              ./hermes-skills/home-assistant-changes/references/make-pr.md;
+          };
           inherit stateDir;
           # Shared-state permissions: config.yaml group-writable, so the host
           # CLI can save settings.
