@@ -28,7 +28,10 @@
 #     Home Assistant's name, and the receiver itself listens on the
 #     container's loopback. The server certificate lives in /etc/hermes-tls on
 #     the host (root plus the container nginx's group, which shares the host's
-#     IDs; issued once by hand, renewed by a timer).
+#     IDs; issued once by hand, renewed by a timer). Two routes: ha-maintenance
+#     (device lists reconciled into kanban tasks, no agent turn) and ha-log
+#     (errors and some warnings Home Assistant logs: one task per distinct
+#     issue, and a triage turn on Signal for new ones, rate-limited).
 #   - PR events: on a review or comment, a workflow in each repo
 #     (.github/workflows/pr-events.yml) joins the tailnet as tag:github-ci
 #     (Tailscale workload identity federation; the tailnet policy lets that tag
@@ -310,6 +313,7 @@ in
               }
             '';
             locations."= /webhooks/ha-maintenance".proxyPass = "http://127.0.0.1:8644";
+            locations."= /webhooks/ha-log".proxyPass = "http://127.0.0.1:8644";
             locations."/".return = "404";
           };
           # PR events from the tailnet: plain HTTP (WireGuard encrypts it), one
@@ -349,6 +353,12 @@ in
             }
           } ${stateDir}/.hermes/scripts/.ha-maintenance.py.new
           mv -f ${stateDir}/.hermes/scripts/.ha-maintenance.py.new ${stateDir}/.hermes/scripts/ha-maintenance.py
+          install -m 0444 ${
+            pkgs.replaceVars ./hermes-scripts/ha-log.py {
+              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
+            }
+          } ${stateDir}/.hermes/scripts/.ha-log.py.new
+          mv -f ${stateDir}/.hermes/scripts/.ha-log.py.new ${stateDir}/.hermes/scripts/ha-log.py
           install -m 0444 ${
             pkgs.replaceVars ./hermes-scripts/github-pr.py { gh = lib.getExe ghApp; }
           } ${stateDir}/.hermes/scripts/.github-pr.py.new
@@ -423,6 +433,24 @@ in
                   secret = "INSECURE_NO_AUTH";
                   script = "ha-maintenance.py";
                   deliver = "log";
+                };
+                # Errors Home Assistant logs: ha-log.py keeps one kanban task
+                # per distinct issue and writes a triage prompt only for a new
+                # one (otherwise [SILENT]); the reply goes to Signal as for
+                # github-pr below.
+                routes.ha-log = {
+                  secret = "INSECURE_NO_AUTH";
+                  script = "ha-log.py";
+                  prompt = "{prompt}";
+                  deliver = "signal";
+                  # The log text is untrusted, but it reaches the prompt only
+                  # sanitised and marked as data, and triage needs more than the
+                  # web-only default: the terminal (git, reading HA's states),
+                  # delegate_task for a fix John asks for, and the kanban task.
+                  toolsets = [
+                    "hermes-signal"
+                    "kanban"
+                  ];
                 };
                 # Activity on Hermes's own PRs (see the header): github-pr.py
                 # reads the PR and either drops the event or writes the
