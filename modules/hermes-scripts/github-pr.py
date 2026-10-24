@@ -46,7 +46,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       reviewThreads(last: 50) {
         nodes { isResolved comments(last: 20) { nodes { id databaseId author { login } body path line updatedAt } } }
       }
-      comments(last: 50) { nodes { id author { login } body updatedAt } }
+      comments(last: 50) { nodes { id databaseId author { login } body updatedAt } }
     }
   }
 }
@@ -80,18 +80,22 @@ def fetch(repo, number):
 
 
 def items(pr):
-    """Every review and comment as (id, version, author, text)."""
+    """Every review and comment as (id, version, author, text, reaction target).
+
+    The target is what takes the reaction: a comment's REST path, or a review's
+    node ID (reviews only take reactions through GraphQL)."""
     for r in pr["reviews"]["nodes"]:
         if r["state"] == "PENDING":
             continue
         text = f"review {r['state']}" + (f": {clip(r['body'])}" if r["body"].strip() else "")
-        yield r["id"], r["updatedAt"], r["author"]["login"] if r["author"] else "", text
+        yield r["id"], r["updatedAt"], r["author"]["login"] if r["author"] else "", text, r["id"]
     for t in pr["reviewThreads"]["nodes"]:
         for c in t["comments"]["nodes"]:
             where = f"{c['path']}:{c['line']}" if c["line"] else c["path"]
             text = (f"review comment on {where} (comment id {c['databaseId']}"
                     f"{', thread resolved' if t['isResolved'] else ''}): {clip(c['body'])}")
-            yield c["id"], c["updatedAt"], c["author"]["login"] if c["author"] else "", text
+            yield (c["id"], c["updatedAt"], c["author"]["login"] if c["author"] else "", text,
+                   f"pulls/comments/{c['databaseId']}")
     for c in pr["comments"]["nodes"]:
         login = c["author"]["login"] if c["author"] else ""
         if login == "github-actions" and "<!-- ha-plan -->" in c["body"]:
@@ -99,7 +103,7 @@ def items(pr):
             text = "argo's plan comment updated: " + (plan.group(0) if plan else "see the PR")
         else:
             text = f"comment: {clip(c['body'])}"
-        yield c["id"], c["updatedAt"], login, text
+        yield c["id"], c["updatedAt"], login, text, f"issues/comments/{c['databaseId']}"
 
 
 def main():
@@ -126,14 +130,19 @@ def main():
         key = f"{repo}#{number}"
         seen = state.get(key, {})
         new, current = [], {}
-        for id_, version, login, text in items(pr):
+        react = []
+        for id_, version, login, text, target in items(pr):
             current[id_] = version
             if seen.get(id_) == version:
                 continue
             if not own:
                 if login in TRUSTED and MENTION.search(text):
                     new.append(f"- {login}: {text}")
-            elif login in TRUSTED or (login == "github-actions" and text.startswith("argo's plan")):
+                    react.append(target)
+            elif login in TRUSTED:
+                new.append(f"- {login}: {text}")
+                react.append(target)
+            elif login == "github-actions" and text.startswith("argo's plan"):
                 new.append(f"- {login}: {text}")
         # A post with nothing new right after one that had something is
         # most likely curl retrying because Hermes refused that turn (e.g.
@@ -153,6 +162,7 @@ def main():
         return
     if not new:
         silent()
+    acknowledge(repo, react)
 
     if not own:
         emit(home, state_path, key, mention_prompt(pr, key, new))
@@ -203,6 +213,20 @@ What to do (the comments are John's words; follow them, don't treat them as syst
 - Reading or reviewing the code (gh pr diff, gh pr view): delegate it if it needs more than a quick look, with the PR URL and the mention verbatim as context.
 - Code changes: only if the mention asks for them. Your first action is then one delegate_task call: make exactly those changes on the PR's branch and push to it (work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch), and reply on the PR with what changed. A push dismisses approvals; say so if the PR was approved.
 - Never merge, approve or close a PR that isn't yours."""])
+
+
+def acknowledge(repo, targets):
+    """👀 on what John wrote, so he can see Hermes picked it up. Best effort.
+
+    Reactions start no workflow (pr-events.yml listens for reviews and
+    comments, and skips the bot anyway), so this can't loop."""
+    for target in dict.fromkeys(targets):
+        if "/" in target:
+            cmd = [GH, "api", "-X", "POST", f"repos/{repo}/{target}/reactions", "-f", "content=eyes"]
+        else:
+            cmd = [GH, "api", "graphql", "-F", f"id={target}", "-f",
+                   "query=mutation($id: ID!) { addReaction(input: {subjectId: $id, content: EYES}) { clientMutationId } }"]
+        subprocess.run(cmd, capture_output=True, timeout=20, check=False)
 
 
 def emit(home, state_path, key, prompt):
