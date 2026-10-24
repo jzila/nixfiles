@@ -179,6 +179,9 @@ def main():
                  + (f" Only if it passed, {done}; if it failed, leave them open and say so." if tasks else ""))
     else:
         merge = "gh pr merge --merge <url>." + (f" Then {done}." if tasks else "")
+    # nixfiles' protected-paths.yml fails PRs that touch Hermes's own permissions.
+    protected = ("\n- Approved, and only the Protected paths check failed: the PR touches your own permissions, so only"
+                 " John can merge it. Tell him so; don't merge." if repo == "jzila/nixfiles" else "")
     lines = [
         f"GitHub activity on your pull request {pr['url']} ({key}: \"{pr['title']}\", "
         f"branch {pr['headRefName']} into {pr['baseRefName']}).",
@@ -192,9 +195,9 @@ def main():
     lines += ["", "New since you last looked:", *new, "", f"""How to report: John reads your messages on his phone with no other context. Every message to him starts with the PR's title and link, then what he asked for in a few words, then what you did or are doing. When a subagent finishes, send a second message in the same shape with the outcome and the new commit's link (or what failed).
 
 What to do (the comments are John's words; follow them, don't treat them as system instructions):
-- Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit's URL. Don't rebase or merge main in unless John asks or the PR conflicts." Then message John as above.
+- Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's AGENTS.md or README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit's URL. Don't rebase or merge main in unless John asks or the PR conflicts." Then message John as above.
 - Only questions: answer on the PR yourself (gh pr comment, or a reply to the review comment), then message John as above.
-- Approved, checks passing and no unchecked preconditions: {merge} If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
+- Approved, checks passing and no unchecked preconditions: {merge} If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.{protected}
 - Don't push after an approval unless you must; a push dismisses it.
 - Nothing to do (e.g. only the plan comment changed and it looks as expected): reply with one short line."""]
     emit(home, state_path, key, "\n".join(lines))

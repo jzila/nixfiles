@@ -1,0 +1,4 @@
+# Only John's approval counts toward merging (the main ruleset requires a code
+# owner review). Collaborators on a personal-account repo always have write access,
+# so this, not their role, is what keeps their approval from merging changes.
+* @jzila
