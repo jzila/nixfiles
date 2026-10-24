@@ -205,6 +205,17 @@
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
         (system: mkLocalPackages (mkPkgsUnstable system));
 
+      # nixos-deploy's decision logic, against stubs (modules/nixos-deploy/test.sh).
+      checks.x86_64-linux.nixos-deploy =
+        let pkgs = mkPkgs "x86_64-linux";
+        in pkgs.runCommand "nixos-deploy-test" {
+          nativeBuildInputs = with pkgs; [ bash jq coreutils util-linux gawk gnugrep gnused shellcheck ];
+        } ''
+          shellcheck ${./modules/nixos-deploy}/test.sh
+          bash ${./modules/nixos-deploy}/test.sh
+          touch $out
+        '';
+
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {

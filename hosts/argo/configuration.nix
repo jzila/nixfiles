@@ -9,6 +9,7 @@
     ../../modules/ollama.nix
     ../../modules/hermes-container.nix
     ../../modules/ha-gitops.nix
+    ../../modules/nixos-deploy.nix
   ];
 
   # Networking configuration
