@@ -29,6 +29,13 @@
 #     container's loopback. The server certificate lives in /etc/hermes-tls on
 #     the host (root plus the container nginx's group, which shares the host's
 #     IDs; issued once by hand, renewed by a timer).
+#   - PR events: on a review or comment, a workflow in each repo
+#     (.github/workflows/pr-events.yml) joins the tailnet as tag:github-ci
+#     (Tailscale workload identity federation; the tailnet policy lets that tag
+#     reach only argo:8646) and posts {repo, pr}. The host DNATs
+#     tailscale0:8646 to a plain-HTTP nginx listener in the container that only
+#     forwards /webhooks/github-pr; github-pr.py treats the post as a hint and
+#     reads the PR from GitHub itself.
 #   - GitHub: Hermes acts as the zila-hermes GitHub App (installed on
 #     jzila/home-assistant and jzila/nixfiles; no workflow permission, can't
 #     bypass the main rulesets). The app's private key stays on the host
@@ -50,11 +57,18 @@ let
   # what authenticates.
   homeAssistantAddress = "192.168.1.153";
   homeAssistantCertName = "homeassistant.local.zila.dev";
+  # PR event ingress from GitHub Actions over the tailnet (see the header).
+  prEventsPort = 8646;
   tlsDir = "/etc/hermes-tls";
   stepRootCa = ./ssh-ca/root_ca.crt;
   # The container shares the host's IDs, so its nginx reads the bind-mounted
   # certificate as this group.
   nginxGid = toString config.ids.gids.nginx;
+
+  # gh as the zila-hermes app, with the token the host mints.
+  ghApp = pkgs.writeShellScriptBin "gh" ''
+    GH_TOKEN=$(cat /run/host-secrets/github/token) exec ${lib.getExe pkgs.gh} "$@"
+  '';
 
   # GitHub App credentials (see the header).
   githubAppId = "5415128";
@@ -160,7 +174,8 @@ in
   #     otherwise (Signal, web tools). Replies to connections made to the
   #     container are allowed.
   #   - inbound: the webhook port, DNATed to the container for Home
-  #     Assistant's address only.
+  #     Assistant's address only; the PR events port, for the tailnet only
+  #     (tailnet policy narrows it to tag:github-ci).
   networking.firewall.extraCommands = ''
     iptables -w -N hermes-to-host 2>/dev/null || iptables -w -F hermes-to-host
     iptables -w -A hermes-to-host -p tcp --dport 11434 -j nixos-fw-accept
@@ -184,6 +199,8 @@ in
     iptables -w -t nat -N hermes-ingress 2>/dev/null || iptables -w -t nat -F hermes-ingress
     iptables -w -t nat -A hermes-ingress -s ${homeAssistantAddress} -p tcp --dport ${toString webhookPort} \
       -m addrtype --dst-type LOCAL -j DNAT --to-destination ${localAddress}:${toString webhookPort}
+    iptables -w -t nat -A hermes-ingress -i tailscale0 -s 100.64.0.0/10 -p tcp --dport ${toString prEventsPort} \
+      -m addrtype --dst-type LOCAL -j DNAT --to-destination ${localAddress}:${toString prEventsPort}
     iptables -w -t nat -D PREROUTING -j hermes-ingress 2>/dev/null || true
     iptables -w -t nat -I PREROUTING 1 -j hermes-ingress
   '';
@@ -266,7 +283,7 @@ in
         users.users.signal-cli.uid = signalCliId;
 
         # TLS front for the webhook receiver.
-        networking.firewall.allowedTCPPorts = [ webhookPort ];
+        networking.firewall.allowedTCPPorts = [ webhookPort prEventsPort ];
         services.nginx = {
           enable = true;
           recommendedTlsSettings = true;
@@ -295,6 +312,24 @@ in
             locations."= /webhooks/ha-maintenance".proxyPass = "http://127.0.0.1:8644";
             locations."/".return = "404";
           };
+          # PR events from the tailnet: plain HTTP (WireGuard encrypts it), one
+          # path, small JSON bodies only.
+          virtualHosts.hermes-pr-events = {
+            listen = [
+              {
+                addr = "0.0.0.0";
+                port = prEventsPort;
+              }
+            ];
+            locations."= /webhooks/github-pr" = {
+              proxyPass = "http://127.0.0.1:8644";
+              extraConfig = ''
+                limit_except POST { deny all; }
+                client_max_body_size 4k;
+              '';
+            };
+            locations."/".return = "404";
+          };
         };
         # Wait for the certificate instead of failing; hermes-tls-renew on the
         # host starts nginx once one exists.
@@ -314,14 +349,16 @@ in
             }
           } ${stateDir}/.hermes/scripts/.ha-maintenance.py.new
           mv -f ${stateDir}/.hermes/scripts/.ha-maintenance.py.new ${stateDir}/.hermes/scripts/ha-maintenance.py
+          install -m 0444 ${
+            pkgs.replaceVars ./hermes-scripts/github-pr.py { gh = lib.getExe ghApp; }
+          } ${stateDir}/.hermes/scripts/.github-pr.py.new
+          mv -f ${stateDir}/.hermes/scripts/.github-pr.py.new ${stateDir}/.hermes/scripts/github-pr.py
         '';
 
         services.hermes-agent = {
           enable = true;
           extraPackages = [
-            (pkgs.writeShellScriptBin "gh" ''
-              GH_TOKEN=$(cat /run/host-secrets/github/token) exec ${lib.getExe pkgs.gh} "$@"
-            '')
+            ghApp
             # search_files refuses broad searches without it.
             pkgs.ripgrep
           ];
@@ -386,6 +423,15 @@ in
                   secret = "INSECURE_NO_AUTH";
                   script = "ha-maintenance.py";
                   deliver = "log";
+                };
+                # Activity on Hermes's own PRs (see the header): github-pr.py
+                # reads the PR and either drops the event or writes the
+                # prompt; the reply goes to the Signal home channel (/sethome).
+                routes.github-pr = {
+                  secret = "INSECURE_NO_AUTH";
+                  script = "github-pr.py";
+                  prompt = "{prompt}";
+                  deliver = "signal";
                 };
               };
             };
