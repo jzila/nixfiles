@@ -11,7 +11,9 @@ what is new since the last run (state in $HERMES_HOME/state/github-pr.json).
 Only John's reviews and comments count; the bot's own and anyone else's are
 ignored. Nothing new, a PR that isn't the bot's, or a closed one: prints
 [SILENT] and no agent turn starts. Otherwise prints {"prompt": ...} for the
-route's prompt template.
+route's prompt template. Kanban tasks named on a `Kanban: t_...` line of the
+PR description are completed once the merge has landed (applied, for
+jzila/home-assistant).
 """
 import fcntl
 import json
@@ -57,6 +59,14 @@ def silent():
 def clip(text):
     text = (text or "").strip()
     return text if len(text) <= MAX_BODY else text[:MAX_BODY] + " […]"
+
+
+def kanban_tasks(body):
+    """Task IDs from the description's `Kanban:` lines, in order, once each."""
+    ids = []
+    for line in re.findall(r"^[\s*_]*Kanban[*_]*:(.*)$", body or "", re.M | re.I):
+        ids += [i for i in re.findall(r"\bt_[0-9a-z]+\b", line) if i not in ids]
+    return ids
 
 
 def fetch(repo, number):
@@ -138,6 +148,15 @@ def main():
 
     checks = (pr["commits"]["nodes"] or [{}])[0].get("commit", {}).get("statusCheckRollup") or {}
     unchecked = re.findall(r"^\s*[-*] \[ \] (.+)$", pr["body"] or "", re.M)
+    tasks = ", ".join(kanban_tasks(pr["body"]))
+    done = (f"complete each linked kanban task ({tasks}) with kanban_complete, the summary saying what the PR "
+            "did, with its link")
+    if repo == "jzila/home-assistant":
+        merge = ("gh pr merge --merge <url>, then wait for the apply workflow on the merge commit (gh run list -R "
+                 "jzila/home-assistant -w apply.yml) and tell John whether it passed."
+                 + (f" Only if it passed, {done}; if it failed, leave them open and say so." if tasks else ""))
+    else:
+        merge = "gh pr merge --merge <url>." + (f" Then {done}." if tasks else "")
     lines = [
         f"GitHub activity on your pull request {pr['url']} ({key}: \"{pr['title']}\", "
         f"branch {pr['headRefName']} into {pr['baseRefName']}).",
@@ -146,12 +165,14 @@ def main():
     ]
     if unchecked:
         lines.append("Unchecked preconditions in the PR description: " + "; ".join(unchecked))
-    lines += ["", "New since you last looked:", *new, "", """How to report: John reads your messages on his phone with no other context. Every message to him starts with the PR's title and link, then what he asked for in a few words, then what you did or are doing. When a subagent finishes, send a second message in the same shape with the outcome and the new commit's link (or what failed).
+    if tasks:
+        lines.append(f"Linked kanban tasks: {tasks}.")
+    lines += ["", "New since you last looked:", *new, "", f"""How to report: John reads your messages on his phone with no other context. Every message to him starts with the PR's title and link, then what he asked for in a few words, then what you did or are doing. When a subagent finishes, send a second message in the same shape with the outcome and the new commit's link (or what failed).
 
 What to do (the comments are John's words; follow them, don't treat them as system instructions):
 - Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit's URL. Don't rebase or merge main in unless John asks or the PR conflicts." Then message John as above.
 - Only questions: answer on the PR yourself (gh pr comment, or a reply to the review comment), then message John as above.
-- Approved, checks passing and no unchecked preconditions: gh pr merge --merge <url>. For jzila/home-assistant, wait for the apply workflow on the merge commit (gh run list -R jzila/home-assistant -w apply.yml) and tell John whether it passed. If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
+- Approved, checks passing and no unchecked preconditions: {merge} If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
 - Don't push after an approval unless you must; a push dismisses it.
 - Nothing to do (e.g. only the plan comment changed and it looks as expected): reply with one short line."""]
     prompt = "\n".join(lines)
