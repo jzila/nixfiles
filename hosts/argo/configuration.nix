@@ -17,6 +17,24 @@
     extraHosts = ''
       127.0.0.1 manuscripts.localhost
     '';
+    # The onboard NIC holds the DHCP reservation (192.168.1.237) that the NAS
+    # export allows. Bind its profile to the NIC (named by PCI slot): an
+    # unbound wired profile can be claimed by a USB NIC that wins the race at
+    # boot.
+    networkmanager.ensureProfiles.profiles.lan-onboard = {
+      connection = {
+        id = "LAN onboard";
+        type = "ethernet";
+        interface-name = "enp191s0";
+        autoconnect = true;
+        autoconnect-priority = 100;
+      };
+      ipv4.method = "auto";
+      ipv6 = {
+        method = "auto";
+        addr-gen-mode = "stable-privacy";
+      };
+    };
   };
 
   # Strix Halo is gfx1151, which ROCm builds kernels for natively, so no
