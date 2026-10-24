@@ -30,7 +30,7 @@ KINDS = {
     # zwave_battery; that kind stays until its old tasks have closed.
     "battery": ("Battery", {
         "silent": "silent for 48+ hours (not heard from, or offline)",
-        "low": "battery at or below 20%",
+        "low": "battery at or below 10%",
     }),
     "zwave_battery": ("Z-Wave battery", {
         "silent": "not heard from in 48+ hours",
