@@ -3,7 +3,7 @@
 Home Assistant posts the full current list of things of one kind that need
 attention:
 
-    {"kind": "zwave_battery",
+    {"kind": "battery",
      "devices": [{"name": "Foyer T/H", "battery": 5, "last_seen": "2025-08-23T07:07:54+00:00",
                   "issues": ["silent", "low"]}, ...]}
     {"kind": "client_cert",
@@ -26,6 +26,12 @@ import sys
 TENANT = "hass"
 # kind -> (task title prefix, issue -> description)
 KINDS = {
+    # Every labelled battery device (the HA repo's batteries feature). Replaces
+    # zwave_battery; that kind stays until its old tasks have closed.
+    "battery": ("Battery", {
+        "silent": "silent for 48+ hours (not heard from, or offline)",
+        "low": "battery at or below 20%",
+    }),
     "zwave_battery": ("Z-Wave battery", {
         "silent": "not heard from in 48+ hours",
         "low": "battery at or below 20%",
