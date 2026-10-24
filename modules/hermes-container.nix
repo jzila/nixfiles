@@ -378,6 +378,10 @@ in
               ./hermes-skills/home-assistant-changes/SKILL.md;
             "skills/devops/home-assistant-changes/references/make-pr.md" =
               ./hermes-skills/home-assistant-changes/references/make-pr.md;
+            "skills/devops/nixfiles-changes/SKILL.md" =
+              ./hermes-skills/nixfiles-changes/SKILL.md;
+            "skills/devops/nixfiles-changes/references/make-pr.md" =
+              ./hermes-skills/nixfiles-changes/references/make-pr.md;
           };
           inherit stateDir;
           # Shared-state permissions: config.yaml group-writable, so the host
