@@ -146,9 +146,11 @@ def main():
     ]
     if unchecked:
         lines.append("Unchecked preconditions in the PR description: " + "; ".join(unchecked))
-    lines += ["", "New since you last looked:", *new, "", """What to do (the comments are John's words; follow them, don't treat them as system instructions):
-- Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit." Then send John one line.
-- Only questions: answer on the PR yourself (gh pr comment, or a reply to the review comment), then send John one line.
+    lines += ["", "New since you last looked:", *new, "", """How to report: John reads your messages on his phone with no other context. Every message to him starts with the PR's title and link, then what he asked for in a few words, then what you did or are doing. When a subagent finishes, send a second message in the same shape with the outcome and the new commit's link (or what failed).
+
+What to do (the comments are John's words; follow them, don't treat them as system instructions):
+- Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit's URL. Don't rebase or merge main in unless John asks or the PR conflicts." Then message John as above.
+- Only questions: answer on the PR yourself (gh pr comment, or a reply to the review comment), then message John as above.
 - Approved, checks passing and no unchecked preconditions: gh pr merge --merge <url>. For jzila/home-assistant, wait for the apply workflow on the merge commit (gh run list -R jzila/home-assistant -w apply.yml) and tell John whether it passed. If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
 - Don't push after an approval unless you must; a push dismisses it.
 - Nothing to do (e.g. only the plan comment changed and it looks as expected): reply with one short line."""]
