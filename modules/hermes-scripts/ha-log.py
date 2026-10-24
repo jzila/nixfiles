@@ -1,20 +1,24 @@
 """Webhook script for the ha-log route: Home Assistant errors -> kanban tasks, and a triage turn.
 
-Home Assistant forwards errors (and warnings from a few loggers) as they are
-logged (automation.hermes_ha_log in the home-assistant repo):
+Home Assistant forwards errors (and homeassistant.config's warnings) as they
+are logged, from 5 minutes after it starts (automation.hermes_ha_log in the
+home-assistant repo):
 
     {"kind": "log", "level": "ERROR", "logger": "homeassistant.components.template",
      "source": "components/template/sensor.py:123", "message": "first line of the message",
-     "exception": "end of the traceback, or null", "count": 3,
+     "exception": "end of the traceback, or null", "count": 1,
      "first_occurred": "2026-10-24T10:00:00-05:00", "last_occurred": "..."}
 
 One open task per distinct issue on tenant "hass": the same logger, source and
-message, with digits and hex IDs collapsed. An issue that already has an open
-task only gets its body refreshed (count, last time) and prints [SILENT]. A new
-one gets a task and prints {"prompt": ...}, so Hermes takes one turn to triage
-it, at most MAX_TURNS an hour (state in $HERMES_HOME/state/ha-log.json); past
-that the task is still created, silently. Logs don't clear, so these tasks are
-never completed here.
+message, with digits and hex IDs collapsed (for template warnings, the warning
+alone: see issue_key). Home Assistant fires once per occurrence with count 1,
+so the task body keeps its own count. An issue that already has an open task
+only gets its body refreshed (count, last time) and prints [SILENT]. A new one
+gets a task and prints {"prompt": ...}, so Hermes takes one turn to triage it,
+at most MAX_TURNS an hour and once per issue per COOLDOWN (state in
+$HERMES_HOME/state/ha-log.json); past either, the task is still created,
+silently. Logs don't clear, so these tasks are never completed here; Hermes
+completes the ones it finds transient.
 
 The payload is untrusted input; it only ever becomes task titles and bodies,
 passed as argv (never through a shell), and the prompt marks it as data.
@@ -34,6 +38,7 @@ PREFIX = "HA log: "
 LEVELS = {"WARNING", "ERROR", "CRITICAL"}
 MAX_TURNS = 5  # new-issue turns per RATE_WINDOW
 RATE_WINDOW = 3600  # seconds
+COOLDOWN = 86400  # seconds before the same issue can get another turn
 
 
 def clean(text, limit):
@@ -53,6 +58,13 @@ def normalise(message):
 
 
 def issue_key(logger, source, message):
+    if logger == "homeassistant.helpers.template":
+        # "Template variable warning|error: <what> when rendering '<template's
+        # first line>'": the source is always the same line in the helper, and
+        # the template text varies with what was rendered into it, so key on
+        # what went wrong alone.
+        message = re.sub(r" when [a-z ]+ '.*", "", message, flags=re.S)
+        source = ""
     return hashlib.sha256(f"{logger}|{source}|{normalise(message)}".encode()).hexdigest()[:16]
 
 
@@ -76,22 +88,22 @@ def main():
     source = clean(payload.get("source", ""), 160)
     message = clean_text(str(payload.get("message") or "").split("\n")[0], 400)
     exception = clean_text(payload.get("exception"), 1500)
-    count = clean(payload.get("count", ""), 10)
     first = clean(payload.get("first_occurred", ""), 40)
-    last = clean(payload.get("last_occurred", ""), 40)
+    last = clean(payload.get("last_occurred", ""), 40) or first
 
     key = issue_key(logger, source, message)
     marker = f"Issue key: {key}"
     title = f"{PREFIX}{logger.removeprefix('homeassistant.')}: {clean(message, 80) or level}"
-    lines = [f"Logged by Home Assistant ({level}, {logger}).", f"- where: {source or 'unknown'}",
-             f"- message: {message}"]
-    if exception:
-        lines.append(f"- exception (end):\n{exception}")
-    lines.append(f"- logged {count or '?'} times since {first or '?'} (Home Assistant's count, reset on restart)"
-                 + (f", last at {last}" if last else ""))
-    lines += ["Logs don't clear, so this isn't completed automatically: John or Hermes completes it "
-              "once it's fixed or understood.", marker]
-    body = "\n".join(lines)
+
+    def body(count, since):
+        lines = [f"Logged by Home Assistant ({level}, {logger}).", f"- where: {source or 'unknown'}",
+                 f"- message: {message}"]
+        if exception:
+            lines.append(f"- exception (end):\n{exception}")
+        lines.append(f"- logged {count} times since {since or '?'}" + (f", last at {last}" if last else ""))
+        lines += ["Logs don't clear, so this isn't completed automatically: John or Hermes completes it "
+                  "once it's fixed or understood.", marker]
+        return "\n".join(lines)
 
     home = pathlib.Path(os.environ.get("HERMES_HOME") or pathlib.Path(__file__).resolve().parent.parent)
     state_path = home / "state" / "ha-log.json"
@@ -103,21 +115,28 @@ def main():
         task = next((t for t in tasks if t["title"].startswith(PREFIX) and t["status"] not in ("done", "archived")
                      and marker in (t.get("body") or "").splitlines()), None)
         if task is not None:
-            if (task.get("body") or "") != body:
-                kanban("edit", task["id"], "--body", body)
+            # Each event is one occurrence, so count on from the task's body.
+            seen = re.search(r"^- logged (\d+) times since ([^,\s]+)", task.get("body") or "", re.M)
+            kanban("edit", task["id"], "--body",
+                   body(int(seen[1]) + 1, seen[2]) if seen else body(1, first))
             print("[SILENT]")
             return
 
-        task_id = json.loads(kanban("create", title, "--body", body, "--tenant", TENANT,
+        task_id = json.loads(kanban("create", title, "--body", body(1, first), "--tenant", TENANT,
                                     "--created-by", "home-assistant", "--json"))["id"]
 
         state = json.loads(state_path.read_text()) if state_path.exists() else {}
         now = time.time()
         turns = [t for t in state.get("turns", []) if now - t < RATE_WINDOW]
-        allowed = len(turns) < MAX_TURNS
+        # Issues triaged recently, so one that slips past the open-task check
+        # (its task completed as transient, say) doesn't get a second turn.
+        triaged = {k: t for k, t in state.get("triaged", {}).items() if now - t < COOLDOWN}
+        allowed = len(turns) < MAX_TURNS and key not in triaged
         if allowed:
             turns.append(now)
+            triaged[key] = now
         state["turns"] = turns
+        state["triaged"] = triaged
         tmp = state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(state))
         tmp.replace(state_path)
@@ -135,14 +154,15 @@ def main():
         f"- where: {source or 'unknown'}",
         f"- message: {message}",
         *([f"- exception (end):\n{exception}"] if exception else []),
-        f"- logged {count or '?'} times since {first or '?'}",
+        f"- logged at {first or '?'}",
         "",
-        f"""How to report: John reads this on his phone with no other context. Start with what broke: the logger, the message in plain words, and where (file:line, or the automation, script or entity). Then the likely cause in 2-3 lines, then the task ID ({task_id}).
+        f"""How to report: John reads this on his phone with no other context, and it arrives unprompted, so it must be obvious it's an automatic alert. Start the first line with "⚠️ Home Assistant logged a{'n' if level == 'ERROR' else ''} {level} (automatic alert):" and finish it with what broke: the logger, the message in plain words, and where (file:line, or the automation, script or entity). Then the likely cause in 2-3 lines, then the task ID ({task_id}).
 
 What to do:
 - Investigate read-only: the home-assistant repo is cloned at /var/lib/hermes/workspace/home-assistant; git fetch origin there and read origin/main (git show, git grep) without switching branches. Reading Home Assistant's states is fine. Never change Home Assistant's configuration through its API or UI.
 - If the cause is a bug in the repo, offer to fix it with a PR (home-assistant-changes skill: the code work is delegated, and the PR description gets "Kanban: {task_id}"), but don't open one unless John asks.
-- If it's outside the repo (an integration, a device, the network) or harmless, say so. Leave the task open either way; John completes it, or asks you to.""",
+- If it looks transient (connection refused, a timeout, an unavailable device) and the current state shows it resolved (the integration is loaded, the entity is available again), say so in one line instead of the cause, and complete task {task_id} yourself with kanban_complete, the summary giving that reason.
+- Otherwise, if it's outside the repo (an integration, a device, the network) or harmless, say so. Leave the task open; John completes it, or asks you to.""",
     ])
     print(json.dumps({"prompt": prompt}))
 
