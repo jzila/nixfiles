@@ -8,6 +8,7 @@
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
     ../../modules/hermes-container.nix
+    ../../modules/hermes-vm/host.nix
     ../../modules/ha-gitops.nix
   ];
 
