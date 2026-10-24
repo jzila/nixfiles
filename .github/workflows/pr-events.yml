@@ -2,8 +2,9 @@
 # tag:github-ci (workload identity federation: no Tailscale secret stored here;
 # the tailnet policy lets the tag reach only argo:8646) and posts just the repo
 # and PR number. Hermes reads the PR from GitHub itself, so the post is only a
-# hint. Bursts (a review with several comments) settle into one post: each new
-# event for the PR cancels the run that's still waiting.
+# hint. Per PR, at most one run posts at a time and one more waits: a burst (a
+# review with several comments) is the first post plus one catch-up, and the
+# script reports only what's new, so nothing is lost and nothing repeats.
 name: pr-events
 
 on:
@@ -19,7 +20,7 @@ permissions:
 
 concurrency:
   group: pr-events-${{ github.event.pull_request.number || github.event.issue.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   notify:
@@ -27,8 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Let a burst of events settle
-        run: sleep 20
       - uses: tailscale/github-action@99a8333667fff04fdd6cffb46dfd409f8329a7bf # v4.3.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
