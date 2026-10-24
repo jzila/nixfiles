@@ -59,6 +59,12 @@
     # Hermes Agent ships its own flake (package + Home Manager module).
     hermes-agent.url = "github:NousResearch/hermes-agent";
 
+    # The hermes microVM on argo (modules/hermes-vm/, hosts/hermes/).
+    microvm = {
+      url = "github:microvm-nix/microvm.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     mac-app-util = {
       url = "github:hraban/mac-app-util";
     };
@@ -205,6 +211,18 @@
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
         (system: mkLocalPackages (mkPkgsUnstable system));
 
+      # The hermes VM's deploy and health-check logic, against stubs
+      # (hosts/hermes/deploy/test.sh).
+      checks.x86_64-linux.hermes-deploy =
+        let pkgs = mkPkgs "x86_64-linux";
+        in pkgs.runCommand "hermes-deploy-test" {
+          nativeBuildInputs = with pkgs; [ bash jq coreutils util-linux gawk gnugrep gnused shellcheck ];
+        } ''
+          shellcheck -s bash ${./hosts/hermes/deploy}/*.sh
+          bash ${./hosts/hermes/deploy}/test.sh
+          touch $out
+        '';
+
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {
@@ -217,6 +235,10 @@
           hostPath = ./hosts/argo/configuration.nix;
           extraModules = [ ./hosts/argo/hardware-configuration.nix (homeManagerModule "x86_64-linux") ];
         };
+
+        # Hermes's microVM, run by argo (modules/hermes-vm/). Deploys itself
+        # from main (hosts/hermes/deploy.nix); argo only sets what it boots.
+        hermes = mkSystem { hostPath = ./hosts/hermes/configuration.nix; };
 
         # Generic netboot installer (no Home Manager needed)
         installer-netboot = mkSystem { hostPath = ./hosts/installer-netboot/configuration.nix; };

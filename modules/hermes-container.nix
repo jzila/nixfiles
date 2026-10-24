@@ -6,6 +6,10 @@
 # forces the host CLI into the container. Here the container is a plain NixOS
 # system with a private network, and inside it the upstream module runs in its
 # native mode: the gateway is the unprivileged `hermes` user, never root.
+# What runs inside (the gateway, signal-cli, nginx, scripts, skills) is
+# modules/hermes-service.nix, shared with the microVM that is to replace the
+# container (modules/hermes-vm/); services.hermesContainer.enable = false
+# drops the container and keeps the host side below, which the VM also uses.
 #
 #   - Network: private veth (10.233.1.2), NAT to the internet. signal-cli's
 #     JSON-RPC listens on the container's own loopback, so nothing on the host
@@ -50,7 +54,6 @@ let
   hostAddress = "10.233.1.1";
   localAddress = "10.233.1.2";
   hermesId = 870;
-  signalCliId = 871;
   stateDir = "/var/lib/hermes";
 
   # Mutual-TLS webhook ingress from Home Assistant.
@@ -59,7 +62,6 @@ let
   # firewall fails to start if DNS isn't up yet. The client certificate is
   # what authenticates.
   homeAssistantAddress = "192.168.1.153";
-  homeAssistantCertName = "homeassistant.local.zila.dev";
   # PR event ingress from GitHub Actions over the tailnet (see the header).
   prEventsPort = 8646;
   tlsDir = "/etc/hermes-tls";
@@ -68,18 +70,22 @@ let
   # certificate as this group.
   nginxGid = toString config.ids.gids.nginx;
 
-  # gh as the zila-hermes app, with the token the host mints.
-  ghApp = pkgs.writeShellScriptBin "gh" ''
-    GH_TOKEN=$(cat /run/host-secrets/github/token) exec ${lib.getExe pkgs.gh} "$@"
-  '';
-
   # GitHub App credentials (see the header).
   githubAppId = "5415128";
   githubTokenDir = "/run/hermes-github";
-  githubBotName = "zila-hermes[bot]";
-  githubBotEmail = "345981252+zila-hermes[bot]@users.noreply.github.com";
+
+  cfg = config.services.hermesContainer;
 in
 {
+  # Off once Hermes runs in its microVM (modules/hermes-vm/, cutover); the
+  # host side below stays, the VM uses it too.
+  options.services.hermesContainer.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Run Hermes in the NixOS container.";
+  };
+
+  config = lib.mkMerge [ {
   # ── Host side ─────────────────────────────────────────────────────────────
   users.groups.hermes.gid = hermesId;
   users.users.hermes = {
@@ -120,6 +126,7 @@ in
         ${tlsDir}/server.crt ${tlsDir}/server.key
       chown root:${nginxGid} ${tlsDir}/server.crt ${tlsDir}/server.key
       chmod 0640 ${tlsDir}/server.crt ${tlsDir}/server.key
+    '' + lib.optionalString cfg.enable ''
       # Also picks up a certificate reissued by hand.
       nixos-container run hermes -- systemctl reload-or-restart nginx
     '';
@@ -163,6 +170,8 @@ in
     };
   };
 
+  } (lib.mkIf cfg.enable {
+  # ── The container ─────────────────────────────────────────────────────────
   networking.nat = {
     enable = true;
     internalInterfaces = [ "ve-hermes" ];
@@ -251,230 +260,14 @@ in
       #   "/grants/notes" = { hostPath = "/home/john/notes"; isReadOnly = true; };
     };
 
-    config =
-      { config, ... }:
-      {
-        imports = [
-          hermes-agent.nixosModules.default
-          ./signal-cli.nix
-        ];
-
-        system.stateVersion = "26.05";
-
-        networking.useHostResolvConf = lib.mkForce false;
-        networking.nameservers = [
-          "192.168.1.135"
-          "192.168.1.1"
-        ];
-
-        users.groups.hermes.gid = hermesId;
-        users.users.hermes.uid = hermesId;
-
-        # GitHub as the zila-hermes app: git and gh read the host-minted
-        # installation token on every call, so a rotated token is picked up
-        # without a restart.
-        programs.git = {
-          enable = true;
-          config = {
-            user.name = githubBotName;
-            user.email = githubBotEmail;
-            credential."https://github.com".helper =
-              "!f() { [ \"$1\" = get ] && echo username=x-access-token && echo password=$(cat /run/host-secrets/github/token); }; f";
-          };
-        };
-        users.groups.signal-cli.gid = signalCliId;
-        users.users.signal-cli.uid = signalCliId;
-
-        # TLS front for the webhook receiver.
-        networking.firewall.allowedTCPPorts = [ webhookPort prEventsPort ];
-        services.nginx = {
-          enable = true;
-          recommendedTlsSettings = true;
-          recommendedProxySettings = true;
-          virtualHosts.hermes-webhooks = {
-            onlySSL = true;
-            listen = [
-              {
-                addr = "0.0.0.0";
-                port = webhookPort;
-                ssl = true;
-              }
-            ];
-            sslCertificate = "/run/host-secrets/hermes-tls/server.crt";
-            sslCertificateKey = "/run/host-secrets/hermes-tls/server.key";
-            extraConfig = ''
-              ssl_client_certificate ${stepRootCa};
-              ssl_verify_client on;
-              ssl_verify_depth 2;
-              # Any certificate the step CA signed passes ssl_verify_client;
-              # only Home Assistant's may post.
-              if ($ssl_client_s_dn != "CN=${homeAssistantCertName}") {
-                return 403;
-              }
-            '';
-            locations."= /webhooks/ha-maintenance".proxyPass = "http://127.0.0.1:8644";
-            locations."= /webhooks/ha-log".proxyPass = "http://127.0.0.1:8644";
-            locations."/".return = "404";
-          };
-          # PR events from the tailnet: plain HTTP (WireGuard encrypts it), one
-          # path, small JSON bodies only.
-          virtualHosts.hermes-pr-events = {
-            listen = [
-              {
-                addr = "0.0.0.0";
-                port = prEventsPort;
-              }
-            ];
-            locations."= /webhooks/github-pr" = {
-              proxyPass = "http://127.0.0.1:8644";
-              extraConfig = ''
-                limit_except POST { deny all; }
-                client_max_body_size 4k;
-              '';
-            };
-            locations."/".return = "404";
-          };
-        };
-        # Wait for the certificate instead of failing; hermes-tls-renew on the
-        # host starts nginx once one exists.
-        systemd.services.nginx.unitConfig.ConditionPathExists = "/run/host-secrets/hermes-tls/server.crt";
-
-        # Webhook route scripts must live under $HERMES_HOME/scripts (symlinks
-        # out of it are refused), so copy them in on every start; a changed
-        # script changes the unit, which restarts it. (tmpfiles' C+ never
-        # replaces an existing file.)
-        systemd.tmpfiles.rules = [
-          "d ${stateDir}/.hermes/scripts 2770 hermes hermes -"
-        ];
-        systemd.services.hermes-agent.preStart = lib.mkAfter ''
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/ha-maintenance.py {
-              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
-            }
-          } ${stateDir}/.hermes/scripts/.ha-maintenance.py.new
-          mv -f ${stateDir}/.hermes/scripts/.ha-maintenance.py.new ${stateDir}/.hermes/scripts/ha-maintenance.py
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/ha-log.py {
-              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
-            }
-          } ${stateDir}/.hermes/scripts/.ha-log.py.new
-          mv -f ${stateDir}/.hermes/scripts/.ha-log.py.new ${stateDir}/.hermes/scripts/ha-log.py
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/github-pr.py { gh = lib.getExe ghApp; }
-          } ${stateDir}/.hermes/scripts/.github-pr.py.new
-          mv -f ${stateDir}/.hermes/scripts/.github-pr.py.new ${stateDir}/.hermes/scripts/github-pr.py
-        '';
-
-        services.hermes-agent = {
-          enable = true;
-          extraPackages = [
-            ghApp
-            # search_files refuses broad searches without it.
-            pkgs.ripgrep
-          ];
-          # Skills this repo maintains, installed into $HERMES_HOME/skills.
-          hermesHomeFiles = {
-            "skills/devops/home-assistant-changes/SKILL.md" =
-              ./hermes-skills/home-assistant-changes/SKILL.md;
-            "skills/devops/home-assistant-changes/references/make-pr.md" =
-              ./hermes-skills/home-assistant-changes/references/make-pr.md;
-          };
-          inherit stateDir;
-          # Shared-state permissions: config.yaml group-writable, so the host
-          # CLI can save settings.
-          addToSystemPackages = true;
-          # The gateway's own directory (systemd WorkingDirectory).
-          workingDirectory = "${stateDir}/workspace";
-          environmentFiles = [ "/run/host-secrets/hermes/gateway.env" ];
-          settings = {
-            model = {
-              provider = "custom";
-              base_url = "http://${hostAddress}:11434/v1";
-              default = "gemma4:26b-a4b";
-              context_length = 262144;
-            };
-            # "." resolves against the process's working directory: the
-            # gateway's workingDirectory above, and the launch directory for
-            # the host CLI, which reads this same config.yaml.
-            terminal.cwd = ".";
-            # Always ask before dangerous commands (the default "smart" lets a
-            # helper model approve some by itself).
-            approvals.mode = "manual";
-            # Kanban tools are hidden from chats unless the platform opts in,
-            # so without this Hermes "records" tasks in its per-session
-            # todo_list, which is gone once the conversation ends.
-            platform_toolsets = {
-              signal = [ "hermes-signal" "kanban" ];
-              cli = [ "hermes-cli" "kanban" ];
-            };
-            # The board is a task list, not a work queue: don't let the
-            # gateway spawn workers that act on tasks by themselves.
-            kanban.dispatch_in_gateway = false;
-            # Subagents (delegate_task, e.g. the HA PR work) run on a coding
-            # model in Ollama Cloud, through the host's signed-in Ollama: no key
-            # here. The work they're given leaves the house; chat stays local.
-            delegation = {
-              model = "glm-5.3:cloud";
-              base_url = "http://${hostAddress}:11434/v1";
-              api_key = "ollama"; # Ollama ignores it
-              request_overrides.reasoning_effort = "high";
-            };
-            # Webhook receiver, reachable only through nginx above (loopback
-            # is also the only bind Hermes allows without request signing;
-            # mutual TLS authenticates instead). ha-maintenance's script
-            # turns Home Assistant's device list into kanban tasks without
-            # an agent turn.
-            platforms.webhook = {
-              enabled = true;
-              extra = {
-                host = "127.0.0.1";
-                port = 8644;
-                routes.ha-maintenance = {
-                  secret = "INSECURE_NO_AUTH";
-                  script = "ha-maintenance.py";
-                  deliver = "log";
-                };
-                # Errors Home Assistant logs: ha-log.py keeps one kanban task
-                # per distinct issue and writes a triage prompt only for a new
-                # one (otherwise [SILENT]); the reply goes to Signal as for
-                # github-pr below.
-                routes.ha-log = {
-                  secret = "INSECURE_NO_AUTH";
-                  script = "ha-log.py";
-                  prompt = "{prompt}";
-                  deliver = "signal";
-                  # The log text is untrusted, but it reaches the prompt only
-                  # sanitised and marked as data, and triage needs more than the
-                  # web-only default: the terminal (git, reading HA's states),
-                  # delegate_task for a fix John asks for, and the kanban task.
-                  toolsets = [
-                    "hermes-signal"
-                    "kanban"
-                  ];
-                };
-                # Activity on Hermes's own PRs (see the header): github-pr.py
-                # reads the PR and either drops the event or writes the
-                # prompt; the reply goes to the Signal home channel
-                # (SIGNAL_HOME_CHANNEL in /etc/hermes/gateway.env: managed
-                # mode refuses /sethome's config write).
-                routes.github-pr = {
-                  secret = "INSECURE_NO_AUTH";
-                  script = "github-pr.py";
-                  prompt = "{prompt}";
-                  deliver = "signal";
-                  # Webhook turns default to a web-only toolset (payloads are
-                  # untrusted). This prompt is built by github-pr.py from the
-                  # PR as read from GitHub, with only John's comments, so it
-                  # gets the tools of his Signal chats.
-                  toolsets = [
-                    "hermes-signal"
-                    "kanban"
-                  ];
-                };
-              };
-            };
-          };
-        };
-      };
+    # The inner system is modules/hermes-service.nix, shared with the microVM.
+    specialArgs = { inherit hermes-agent; };
+    config = {
+      imports = [ ./hermes-service.nix ];
+      hermes.hostAddress = hostAddress;
+      system.stateVersion = "26.05";
+      networking.useHostResolvConf = lib.mkForce false;
+    };
   };
+  }) ];
 }

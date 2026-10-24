@@ -33,6 +33,8 @@ jobs:
         host:
           - venator
           - argo
+          # Hermes's microVM; its in-VM deploy waits for this check on main.
+          - hermes
     steps:
       - uses: actions/checkout@v5
 
