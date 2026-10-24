@@ -1,7 +1,6 @@
 # Fails on any PR that touches the files defining Hermes's own permissions or
-# what deploys to argo as root: Hermes's container, webhook scripts and skills,
-# the Home Assistant runners, the deploy of main to argo (nixos-deploy.nix and
-# its scripts), argo's host config (its module list), the flake and its lock
+# argo's system: Hermes's container, webhook scripts and skills, the Home
+# Assistant runners, argo's host config (its module list), the flake and its lock
 # (an input bump pulls arbitrary upstream code), and .github/ itself. The
 # `protected` regex below is the one list; AGENTS.md points here. The check is
 # required on main, so such a PR lands only by an admin merging it past the
@@ -32,11 +31,11 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          protected='^(\.github/|flake\.(nix|lock)$|hosts/argo/|modules/hermes-container\.nix$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$|modules/nixos-deploy(\.nix$|/))'
+          protected='^(\.github/|flake\.(nix|lock)$|hosts/argo/|modules/hermes-container\.nix$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
           # --no-renames lists both sides of a rename.
           hits=$(git diff --name-only --no-renames "$BASE...$HEAD" | grep -E "$protected" || true)
           if [ -n "$hits" ]; then
-            echo "::error::This PR changes files that define Hermes's own permissions or what deploys to argo; only an admin can merge it (bypassing the rules):"
+            echo "::error::This PR changes files that define Hermes's own permissions or argo's system; only an admin can merge it (bypassing the rules):"
             echo "$hits"
             exit 1
           fi

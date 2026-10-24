@@ -13,8 +13,8 @@
    `nix build --no-link .#nixosConfigurations.argo.config.system.build.toplevel`
    (and the same for any other host you changed) and fix any failure.
    Otherwise CI checks it.
-4. Commit, push, `gh pr create`. Once merged, the change deploys to argo by
-   itself after CI, so the description says what could break and how John
-   would notice. If the context names kanban tasks, it also gets the line
+4. Commit, push, `gh pr create`. argo is John's daily driver: a merged
+   change reaches it only when John rebuilds argo, so the description says
+   what could break and how he would notice. If the context names kanban tasks, it also gets the line
    `Kanban: t_xxxxxxxx` (comma-separated IDs). Return the PR URL, a summary
    and the risk.

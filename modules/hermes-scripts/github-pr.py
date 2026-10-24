@@ -180,9 +180,9 @@ def main():
     else:
         merge = "gh pr merge --merge <url>." + (f" Then {done}." if tasks else "")
     # nixfiles' protected-paths.yml fails PRs that touch Hermes's own permissions
-    # or what deploys to argo (flake inputs, argo's host config).
+    # or argo's system (flake inputs, argo's host config).
     protected = ("\n- Approved, and only the Protected paths check failed: the PR touches your own permissions"
-                 " or what deploys to argo (e.g. flake.lock, hosts/argo/), so only"
+                 " or argo's system (e.g. flake.lock, hosts/argo/), so only"
                  " John can merge it. Tell him so; don't merge." if repo == "jzila/nixfiles" else "")
     lines = [
         f"GitHub activity on your pull request {pr['url']} ({key}: \"{pr['title']}\", "
