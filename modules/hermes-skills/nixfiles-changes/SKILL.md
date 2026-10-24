@@ -28,5 +28,6 @@ subagent returns, send John the PR link, a summary and the risk.
 
 After John approves and checks pass: `gh pr merge --merge <PR>`, then complete
 the PR's kanban tasks (its `Kanban:` line) with the PR link. If the `Protected
-paths` check failed, the PR touches your own permissions: only John can merge
-it, so tell him that instead.
+paths` check failed, the PR touches your own permissions or what deploys to
+argo (`.github/`, your own modules, `hosts/argo/`, `flake.nix`/`flake.lock`):
+only John can merge it, so tell him that instead.
