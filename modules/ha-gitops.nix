@@ -17,8 +17,8 @@
 # John's review as code owner, only John bypasses), so the runner applies
 # whatever reaches main.
 #
-# Drift found by the nightly workflow lands in /var/lib/ha-tofu/drift/report.md
-# and is filed on the hass kanban board.
+# The nightly drift check writes its verdict to /var/lib/ha-tofu/drift/report.md;
+# drift is filed on the hass kanban board, and a clean night completes it.
 { lib, pkgs, hermes-agent, ... }:
 let
   repo = "jzila/home-assistant";
@@ -58,6 +58,43 @@ let
     replace = true;
     extraPackages = with pkgs; [ openssh gh curl util-linux ];
   };
+  # Reconciles the drift report with the hass board, like ha-maintenance.py: one
+  # open "HA drift:" task by ha-drift, its body refreshed when the drift changes,
+  # completed when a check comes back clean. The report's first line is the
+  # verdict (tools/ci/drift.sh in the HA repo); a failed check doesn't rewrite
+  # it, and anything else is refused.
+  driftReport = pkgs.writeShellApplication {
+    name = "ha-drift-report";
+    runtimeInputs = [ hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default pkgs.jq ];
+    text = ''
+      report=$1
+      title="HA drift: Home Assistant differs from main"
+      verdict=$(head -n 1 "$report")
+      open=$(hermes kanban list --tenant hass --json | jq -c '[.[]
+        | select(.created_by == "ha-drift" and (.title | startswith("HA drift:")))
+        | select(.status != "done" and .status != "archived")]')
+
+      if [[ $verdict =~ ^Drift\ found\ .+\ at\ main\ [0-9a-f]+\.$ ]]; then
+        task=$(jq -c 'max_by(.created_at) // empty' <<<"$open")
+        if [ -z "$task" ]; then
+          # No --idempotency-key: it would also match the completed task of an
+          # earlier episode and never open a new one.
+          hermes kanban create --tenant hass --created-by ha-drift --body-file "$report" "$title"
+        elif [ "$(jq -r .body <<<"$task" | tail -n +2)" != "$(tail -n +2 "$report")" ]; then
+          hermes kanban edit "$(jq -r .id <<<"$task")" --body "$(cat "$report")"
+        fi
+      elif [[ $verdict =~ ^No\ drift\ ([0-9-]+)T[^\ ]+\ at\ main\ ([0-9a-f]+)\.$ ]]; then
+        result="Nightly drift check on ''${BASH_REMATCH[1]} found no drift (main ''${BASH_REMATCH[2]})."
+        for id in $(jq -r '.[].id' <<<"$open"); do
+          hermes kanban complete "$id" --result "$result"
+        done
+      else
+        echo "ha-drift-report: unrecognised verdict: $verdict" >&2
+        exit 1
+      fi
+    '';
+  };
+
   environment = {
     HOMEASSISTANT_URL = "https://homeassistant.local.zila.dev";
     HA_STATE_DIR = stateDir;
@@ -122,15 +159,13 @@ in
     };
   };
 
-  # Drift: file the nightly report on the hass board. The idempotency key is the
-  # report's content (without its timestamp line), so the same drift night after
-  # night stays one task.
+  # Drift: reconcile each new report with the hass board.
   systemd.paths.ha-drift-report = {
     wantedBy = [ "paths.target" ];
     pathConfig.PathChanged = "${stateDir}/drift/report.md";
   };
   systemd.services.ha-drift-report = {
-    description = "File Home Assistant drift on the hass kanban board";
+    description = "Reconcile Home Assistant drift with the hass kanban board";
     unitConfig.ConditionPathExists = "${stateDir}/drift/report.md";
     environment.HERMES_HOME = hermesHome;
     serviceConfig = {
@@ -138,13 +173,7 @@ in
       User = "hermes";
       Group = "hermes";
       SupplementaryGroups = [ "ha-tofu" ];
+      ExecStart = "${lib.getExe driftReport} ${stateDir}/drift/report.md";
     };
-    script = ''
-      report=${stateDir}/drift/report.md
-      key=ha-drift-$(tail -n +2 "$report" | sha256sum | cut -c1-16)
-      ${lib.getExe' hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default "hermes"} kanban create \
-        --tenant hass --created-by ha-drift --idempotency-key "$key" \
-        --body-file "$report" "HA drift: Home Assistant differs from main"
-    '';
   };
 }
