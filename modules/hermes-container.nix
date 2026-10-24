@@ -426,12 +426,22 @@ in
                 };
                 # Activity on Hermes's own PRs (see the header): github-pr.py
                 # reads the PR and either drops the event or writes the
-                # prompt; the reply goes to the Signal home channel (/sethome).
+                # prompt; the reply goes to the Signal home channel
+                # (SIGNAL_HOME_CHANNEL in /etc/hermes/gateway.env: managed
+                # mode refuses /sethome's config write).
                 routes.github-pr = {
                   secret = "INSECURE_NO_AUTH";
                   script = "github-pr.py";
                   prompt = "{prompt}";
                   deliver = "signal";
+                  # Webhook turns default to a web-only toolset (payloads are
+                  # untrusted). This prompt is built by github-pr.py from the
+                  # PR as read from GitHub, with only John's comments, so it
+                  # gets the tools of his Signal chats.
+                  toolsets = [
+                    "hermes-signal"
+                    "kanban"
+                  ];
                 };
               };
             };

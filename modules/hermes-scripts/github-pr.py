@@ -20,11 +20,13 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 
 REPOS = {"jzila/home-assistant", "jzila/nixfiles"}
 BOT = "zila-hermes"
 TRUSTED = {"jzila"}
 MAX_BODY = 1500
+RESEND_WINDOW = 120  # seconds
 
 # Substituted by Nix with the store path of the gh wrapper (app token).
 GH = "@gh@"
@@ -115,11 +117,22 @@ def main():
                 continue
             if login in TRUSTED or (login == "github-actions" and text.startswith("argo's plan")):
                 new.append(f"- {login}: {text}")
+        # A post with nothing new right after one that had something is
+        # most likely curl retrying because Hermes refused that turn (e.g.
+        # 503): resend the same prompt once instead of losing the event.
+        last = state.get("_last", {}).get(key)
+        resend = None
+        if not new and last and not last.get("resent") and time.time() - last["at"] < RESEND_WINDOW:
+            resend = last["prompt"]
+            last["resent"] = True
         state[key] = current
         tmp = state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(state))
         tmp.replace(state_path)
 
+    if resend:
+        print(json.dumps({"prompt": resend}))
+        return
     if not new:
         silent()
 
@@ -139,7 +152,15 @@ def main():
 - Approved, checks passing and no unchecked preconditions: gh pr merge --merge <url>. For jzila/home-assistant, wait for the apply workflow on the merge commit (gh run list -R jzila/home-assistant -w apply.yml) and tell John whether it passed. If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
 - Don't push after an approval unless you must; a push dismisses it.
 - Nothing to do (e.g. only the plan comment changed and it looks as expected): reply with one short line."""]
-    print(json.dumps({"prompt": "\n".join(lines)}))
+    prompt = "\n".join(lines)
+    with open(home / "state" / "github-pr.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = json.loads(state_path.read_text())
+        state.setdefault("_last", {})[key] = {"at": time.time(), "prompt": prompt}
+        tmp = state_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state))
+        tmp.replace(state_path)
+    print(json.dumps({"prompt": prompt}))
 
 
 if __name__ == "__main__":
