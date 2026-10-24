@@ -842,6 +842,7 @@
       "klipperrc"."General"."IgnoreImages" = false;
       "klipperrc"."General"."KeepClipboardContents" = false;
       "klipperrc"."General"."MaxClipItems" = 1;
+      "klipperrc"."General"."URLGrabberEnabled" = false;
       "kwalletrc"."Wallet"."First Use" = false;
       "kwinrc"."Desktops"."Id_1" = "21431d7b-643a-4012-b3c2-19188db0bd5b";
       "kwinrc"."Desktops"."Id_2" = "60475ec7-fc04-4ad0-b288-23ae728705b7";
