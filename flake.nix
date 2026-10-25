@@ -205,6 +205,13 @@
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
         (system: mkLocalPackages (mkPkgsUnstable system));
 
+      # nix build .#checks.x86_64-linux.ha-log (Hermes's ha-log webhook script)
+      checks.x86_64-linux.ha-log = let pkgs = mkPkgs "x86_64-linux"; in
+        pkgs.runCommand "ha-log-test" { } ''
+          cd ${./modules/hermes-scripts}
+          PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -m unittest test_ha_log && touch $out
+        '';
+
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {

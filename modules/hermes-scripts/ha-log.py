@@ -17,7 +17,10 @@ only gets its body refreshed (count, last time) and prints [SILENT]. A new one
 gets a task and prints {"prompt": ...}, so Hermes takes one turn to triage it,
 at most MAX_TURNS an hour and once per issue per COOLDOWN (state in
 $HERMES_HOME/state/ha-log.json); past either, the task is still created,
-silently. Logs don't clear, so these tasks are never completed here; Hermes
+silently. Errors saying a device can't be reached come from
+automation.hermes_ha_unreachable instead, only once the device has been
+unreachable for 30 minutes, with "device": its name; those are one task per
+device, whichever integration logged them. Logs don't clear, so these tasks are never completed here; Hermes
 completes the ones it finds transient.
 
 The payload is untrusted input; it only ever becomes task titles and bodies,
@@ -90,14 +93,20 @@ def main():
     exception = clean_text(payload.get("exception"), 1500)
     first = clean(payload.get("first_occurred", ""), 40)
     last = clean(payload.get("last_occurred", ""), 40) or first
+    device = clean(payload.get("device", ""), 80)
+    unreachable = [f"- {device} has been unreachable for 30+ minutes (it still has unavailable entities)"] if device else []
 
-    key = issue_key(logger, source, message)
+    if device:
+        key = hashlib.sha256(f"device|{device.lower()}".encode()).hexdigest()[:16]
+        title = f"{PREFIX}can't reach {device}"
+    else:
+        key = issue_key(logger, source, message)
+        title = f"{PREFIX}{logger.removeprefix('homeassistant.')}: {clean(message, 80) or level}"
     marker = f"Issue key: {key}"
-    title = f"{PREFIX}{logger.removeprefix('homeassistant.')}: {clean(message, 80) or level}"
 
     def body(count, since):
         lines = [f"Logged by Home Assistant ({level}, {logger}).", f"- where: {source or 'unknown'}",
-                 f"- message: {message}"]
+                 f"- message: {message}", *unreachable]
         if exception:
             lines.append(f"- exception (end):\n{exception}")
         lines.append(f"- logged {count} times since {since or '?'}" + (f", last at {last}" if last else ""))
@@ -153,6 +162,7 @@ def main():
         f"- logger: {logger}",
         f"- where: {source or 'unknown'}",
         f"- message: {message}",
+        *unreachable,
         *([f"- exception (end):\n{exception}"] if exception else []),
         f"- logged at {first or '?'}",
         "",

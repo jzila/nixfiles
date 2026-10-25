@@ -11,3 +11,6 @@ netboot-files/
 # Git worktrees for branch work (see AGENTS.md); only the directory is tracked.
 .agent-worktrees/*
 !.agent-worktrees/.keep
+
+# Python bytecode
+__pycache__/
