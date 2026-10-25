@@ -19,12 +19,40 @@
 #
 # The nightly drift check writes its verdict to /var/lib/ha-tofu/drift/report.md;
 # drift is filed on the hass kanban board, and a clean night completes it.
-{ lib, pkgs, hermes-agent, ... }:
+#
+# Two places, one at a time (services.haGitops.enable):
+#   argo       the runners are services on the host (as today).
+#   hermes VM  each runner is its own NixOS container (containers = true), so
+#              neither Hermes's user nor the other runner can reach its
+#              credentials: /etc/ha-tofu/ha holds the ha container's, and
+#              /etc/ha-tofu/ha-pr the ha-pr container's (state-passphrase,
+#              runner-token), each bound read-only into its container alone;
+#              /etc/ha-tofu stays root-only, and only root can enter the
+#              containers. Each has its own network namespace (NAT, nothing
+#              of the VM's loopback: not signal-cli, not the webhook receiver),
+#              reaches Home Assistant, DNS and the internet, and nothing else
+#              on the LAN. The state (/var/lib/ha-tofu) is bound in read-write
+#              for ha, read-only for ha-pr. A container starts only once its
+#              directory in /etc/ha-tofu exists, which is the cut-over's step
+#              (hosts/hermes/README.md): never runners in two places, and
+#              never against a stale copy of the state.
+{ config, lib, pkgs, hermes-agent, ... }:
 let
+  cfg = config.services.haGitops;
   repo = "jzila/home-assistant";
   stateDir = "/var/lib/ha-tofu";
   secretsDir = "/etc/ha-tofu";
   hermesHome = "/var/lib/hermes/.hermes";
+  homeAssistantAddress = "192.168.1.153";
+  # Fixed in containers mode, so ownership of the bound state lines up.
+  haTofuId = 880;
+  haPrId = 881;
+  # Inside each runner's container.
+  resolvers = [ "192.168.1.135" "192.168.1.1" ];
+  nets = {
+    ha = { host = "10.233.3.1"; local = "10.233.3.2"; };
+    ha-pr = { host = "10.233.4.1"; local = "10.233.4.2"; };
+  };
 
   # Host key of Home Assistant's SSH add-on (Terminal & SSH).
   knownHosts = pkgs.writeText "ha-known-hosts" ''
@@ -100,29 +128,11 @@ let
     HA_STATE_DIR = stateDir;
     HA_KNOWN_HOSTS = "${knownHosts}";
   };
-in
-{
-  users.groups.ha-tofu = { };
-  users.users.ha-tofu = {
-    isSystemUser = true;
-    group = "ha-tofu";
-    description = "Home Assistant GitHub runner (apply)";
-  };
-  users.users.ha-pr = {
-    isSystemUser = true;
-    group = "ha-tofu"; # reads the state
-    description = "Home Assistant GitHub runner (PR plans)";
-  };
 
-  systemd.tmpfiles.rules = [
-    "d ${secretsDir} 0700 root root -"
-    "d ${stateDir} 2750 ha-tofu ha-tofu -"
-    "f ${stateDir}/.lock 0640 ha-tofu ha-tofu -"
-    "d ${stateDir}/drift 2750 ha-tofu ha-tofu -"
-  ];
-
-  services.github-runners.ha = common // {
-    name = "argo-ha";
+  # The runners, as services on argo or, in containers mode, each in its own
+  # container (named after the runner).
+  runners.ha = common // {
+    name = "${cfg.runnerPrefix}-ha";
     extraLabels = [ "ha" ];
     user = "ha-tofu";
     group = "ha-tofu";
@@ -145,8 +155,8 @@ in
     };
   };
 
-  services.github-runners.ha-pr = common // {
-    name = "argo-ha-pr";
+  runners.ha-pr = common // {
+    name = "${cfg.runnerPrefix}-ha-pr";
     extraLabels = [ "ha-pr" ];
     user = "ha-pr";
     group = "ha-tofu";
@@ -158,6 +168,70 @@ in
       ReadOnlyPaths = [ stateDir ];
     };
   };
+
+  # A runner's own container: its credentials (/etc/ha-tofu/<runner> as
+  # /etc/ha-tofu), the state, its own network.
+  runnerContainer = runner: user: {
+    autoStart = true;
+    privateNetwork = true;
+    hostAddress = nets.${runner}.host;
+    localAddress = nets.${runner}.local;
+    bindMounts = {
+      ${secretsDir} = {
+        hostPath = "${secretsDir}/${runner}";
+        isReadOnly = true;
+      };
+      ${stateDir} = {
+        hostPath = stateDir;
+        isReadOnly = runner != "ha";
+      };
+    };
+    config = { lib, ... }: {
+      system.stateVersion = "26.05";
+      networking.useHostResolvConf = lib.mkForce false;
+      networking.nameservers = resolvers;
+      # `nix develop` in the jobs, through the VM's nix-daemon.
+      nix.settings.experimental-features = [ "nix-command" "flakes" ];
+      users.groups.ha-tofu.gid = haTofuId;
+      users.users.${user} = {
+        isSystemUser = true;
+        uid = if user == "ha-tofu" then haTofuId else haPrId;
+        group = "ha-tofu";
+      };
+      services.github-runners.${runner} = runners.${runner};
+    };
+  };
+in
+{
+  options.services.haGitops = {
+    enable = lib.mkEnableOption "the GitHub Actions runners for jzila/home-assistant (on one host at a time)";
+    containers = lib.mkEnableOption "each runner in its own NixOS container (the hermes VM)";
+    runnerPrefix = lib.mkOption {
+      type = lib.types.str;
+      default = config.networking.hostName;
+      description = "Runner names on GitHub: <prefix>-ha and <prefix>-ha-pr.";
+    };
+  };
+
+  config = lib.mkIf cfg.enable (lib.mkMerge [ {
+  users.groups.ha-tofu = lib.optionalAttrs cfg.containers { gid = haTofuId; };
+  users.users.ha-tofu = {
+    isSystemUser = true;
+    group = "ha-tofu";
+    description = "Home Assistant GitHub runner (apply)";
+  } // lib.optionalAttrs cfg.containers { uid = haTofuId; };
+  users.users.ha-pr = {
+    isSystemUser = true;
+    group = "ha-tofu"; # reads the state
+    description = "Home Assistant GitHub runner (PR plans)";
+  } // lib.optionalAttrs cfg.containers { uid = haPrId; };
+
+  systemd.tmpfiles.rules = [
+    "d ${secretsDir} 0700 root root -"
+    "d ${stateDir} 2750 ha-tofu ha-tofu -"
+    "f ${stateDir}/.lock 0640 ha-tofu ha-tofu -"
+    "d ${stateDir}/drift 2750 ha-tofu ha-tofu -"
+  ];
 
   # Drift: reconcile each new report with the hass board.
   systemd.paths.ha-drift-report = {
@@ -176,4 +250,57 @@ in
       ExecStart = "${lib.getExe driftReport} ${stateDir}/drift/report.md";
     };
   };
+  }
+
+  (lib.mkIf (!cfg.containers) {
+    services.github-runners = { inherit (runners) ha ha-pr; };
+  })
+
+  (lib.mkIf cfg.containers {
+    containers.ha = runnerContainer "ha" "ha-tofu";
+    containers.ha-pr = runnerContainer "ha-pr" "ha-pr";
+    # Each starts once its credentials exist (see the header).
+    systemd.services."container@ha".unitConfig.ConditionPathExists = "${secretsDir}/ha";
+    systemd.services."container@ha-pr".unitConfig.ConditionPathExists = "${secretsDir}/ha-pr";
+
+    networking.nat = {
+      enable = true;
+      internalInterfaces = [ "ve-ha" "ve-ha-pr" ];
+    };
+    # Like the hermes container's grants: nothing on this host; forwarded,
+    # DNS, Home Assistant (HTTPS and the add-on's SSH), the internet, and
+    # nothing else on private or local ranges; no new connections in.
+    networking.firewall.extraCommands = ''
+      iptables -w -N ha-runner-to-host 2>/dev/null || iptables -w -F ha-runner-to-host
+      iptables -w -A ha-runner-to-host -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
+      iptables -w -A ha-runner-to-host -j nixos-fw-refuse
+      iptables -w -I nixos-fw 1 -i ve-ha+ -j ha-runner-to-host
+
+      iptables -w -N ha-runner-egress 2>/dev/null || iptables -w -F ha-runner-egress
+      iptables -w -A ha-runner-egress -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+      for resolver in ${lib.concatStringsSep " " resolvers}; do
+        for proto in udp tcp; do
+          iptables -w -A ha-runner-egress -d "$resolver" -p "$proto" --dport 53 -j RETURN
+        done
+      done
+      iptables -w -A ha-runner-egress -d ${homeAssistantAddress} -p tcp -m multiport --dports 22,443 -j RETURN
+      for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
+        iptables -w -A ha-runner-egress -d "$net" -j REJECT
+      done
+      iptables -w -D FORWARD -i ve-ha+ -j ha-runner-egress 2>/dev/null || true
+      iptables -w -I FORWARD 1 -i ve-ha+ -j ha-runner-egress
+      iptables -w -D FORWARD -o ve-ha+ -m conntrack --ctstate NEW -j REJECT 2>/dev/null || true
+      iptables -w -I FORWARD 1 -o ve-ha+ -m conntrack --ctstate NEW -j REJECT
+    '';
+    networking.firewall.extraStopCommands = ''
+      iptables -w -D FORWARD -i ve-ha+ -j ha-runner-egress 2>/dev/null || true
+      iptables -w -D FORWARD -o ve-ha+ -m conntrack --ctstate NEW -j REJECT 2>/dev/null || true
+      iptables -w -D nixos-fw -i ve-ha+ -j ha-runner-to-host 2>/dev/null || true
+      for chain in ha-runner-to-host ha-runner-egress; do
+        iptables -w -F "$chain" 2>/dev/null || true
+        iptables -w -X "$chain" 2>/dev/null || true
+      done
+    '';
+  })
+  ]);
 }
