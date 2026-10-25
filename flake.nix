@@ -205,6 +205,9 @@
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
         (system: mkLocalPackages (mkPkgsUnstable system));
 
+      checks.x86_64-linux.hermes-scripts =
+        nixpkgs.legacyPackages.x86_64-linux.callPackage ./modules/hermes-scripts/tests.nix { };
+
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {

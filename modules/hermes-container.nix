@@ -31,7 +31,10 @@
 #     IDs; issued once by hand, renewed by a timer). Two routes: ha-maintenance
 #     (device lists reconciled into kanban tasks, no agent turn) and ha-log
 #     (errors and some warnings Home Assistant logs: one task per distinct
-#     issue, and a triage turn on Signal for new ones, rate-limited).
+#     issue, and a triage turn on Signal for new ones, rate-limited; errors
+#     saying a device can't be reached are one task per device, checked
+#     against Home Assistant's 5-minute device snapshots on the same route
+#     after 30 minutes, and dropped for devices labelled sleeps).
 #   - PR events: on a review or comment, a workflow in each repo
 #     (.github/workflows/pr-events.yml) joins the tailnet as tag:github-ci
 #     (Tailscale workload identity federation; the tailnet policy lets that tag
