@@ -1,13 +1,12 @@
-# Fails on any PR that touches the files defining Hermes's own permissions or
-# argo's system: Hermes's container, webhook scripts and skills, the Home
-# Assistant runners, argo's host config (its module list), the flake and its lock
-# (an input bump pulls arbitrary upstream code), and .github/ itself. The
-# `protected` regex below is the one list; AGENTS.md points here. The check is
-# required on main, so such a PR lands only by an admin merging it past the
-# rules, a deliberate step on top of the code owner review; Hermes can't merge
-# it and can't change this workflow (the zila-hermes app has no workflow
-# permission). It runs on every PR, with no paths filter, because a required
-# check that never reports blocks the merge.
+# Flags PRs that touch the files defining Hermes's own permissions or argo's
+# system: Hermes's container, webhook scripts and skills, the Home Assistant
+# runners, argo's host config (its module list), the flake and its lock (an
+# input bump pulls arbitrary upstream code), and .github/ itself. John's
+# approval already gates every merge (code owner review, .github/CODEOWNERS);
+# this only makes such a PR stand out among routine ones, with one comment
+# listing the files, kept current on each push and deleted once the PR no
+# longer touches any. It never fails. The `protected` regex below is the one
+# list; AGENTS.md points here.
 name: protected-paths
 
 on:
@@ -16,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   protected-paths:
@@ -26,17 +26,32 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Check changed files
+      - name: Comment on changed protected files
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           protected='^(\.github/|flake\.(nix|lock)$|hosts/argo/|modules/hermes-container\.nix$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
+          marker='<!-- protected-paths -->'
           # --no-renames lists both sides of a rename.
           hits=$(git diff --name-only --no-renames "$BASE...$HEAD" | grep -E "$protected" || true)
-          if [ -n "$hits" ]; then
-            echo "::error::This PR changes files that define Hermes's own permissions or argo's system; only an admin can merge it (bypassing the rules):"
-            echo "$hits"
-            exit 1
+          existing=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n1)
+          if [ -z "$hits" ]; then
+            echo "No protected paths changed."
+            if [ -n "$existing" ]; then gh api -X DELETE "repos/$GH_REPO/issues/comments/$existing"; fi
+            exit 0
           fi
-          echo "No protected paths changed."
+          echo "::warning::This PR changes files that define Hermes's own permissions or argo's system."
+          echo "$hits"
+          body=$(printf '%s\n%s\n\n%s\n' "$marker" \
+            "**This PR changes Hermes's own setup or argo's system.** Review these files closely:" \
+            "$(sed 's/.*/- `&`/' <<<"$hits")")
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$existing" -f body="$body" >/dev/null
+          else
+            gh pr comment "$PR" --body "$body"
+          fi
