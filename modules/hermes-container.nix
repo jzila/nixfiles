@@ -253,6 +253,24 @@ in
 
     config =
       { config, ... }:
+      let
+        hermes = lib.getExe' config.services.hermes-agent.package "hermes";
+        hermesHome = "${stateDir}/.hermes";
+        scripts = pkgs.runCommand "hermes-scripts" { } ''
+          mkdir $out
+          cp ${pkgs.replaceVars ./hermes-scripts/ha-maintenance.py { inherit hermes; }} $out/ha-maintenance.py
+          cp ${pkgs.replaceVars ./hermes-scripts/ha-log.py { inherit hermes; }} $out/ha-log.py
+          cp ${pkgs.replaceVars ./hermes-scripts/github-pr.py { gh = lib.getExe ghApp; }} $out/github-pr.py
+        '';
+        # See BindReadOnlyPaths below.
+        readOnlyState = [
+          "${scripts}:${hermesHome}/scripts"
+          "${hermesHome}/skills/devops/home-assistant-changes"
+          "${hermesHome}/skills/devops/nixfiles-changes"
+          "${hermesHome}/config.yaml"
+          "${hermesHome}/.env"
+        ];
+      in
       {
         imports = [
           hermes-agent.nixosModules.default
@@ -339,31 +357,25 @@ in
         # host starts nginx once one exists.
         systemd.services.nginx.unitConfig.ConditionPathExists = "/run/host-secrets/hermes-tls/server.crt";
 
-        # Webhook route scripts must live under $HERMES_HOME/scripts (symlinks
-        # out of it are refused), so copy them in on every start; a changed
-        # script changes the unit, which restarts it. (tmpfiles' C+ never
-        # replaces an existing file.)
+        # What defines Hermes's own behaviour changes only through this repo:
+        # Hermes owns its state directory, so the webhook route scripts, the
+        # skills maintained here, config.yaml (its routes, toolsets and
+        # approvals; the activation merge keeps keys Nix doesn't set) and
+        # .env (the Signal allowlist) are mounted read-only over it for the
+        # gateway and for Hermes's user manager, which `systemd-run --user`
+        # would otherwise run commands under. The scripts must be regular
+        # files under $HERMES_HOME/scripts (symlinks out of it are refused),
+        # hence a copied tree; a changed script changes the unit, which
+        # restarts it. Activation writes the rest before either unit starts.
+        # The user manager keeps its view until the container restarts.
         systemd.tmpfiles.rules = [
-          "d ${stateDir}/.hermes/scripts 2770 hermes hermes -"
+          "d ${hermesHome}/scripts 2770 hermes hermes -"
         ];
-        systemd.services.hermes-agent.preStart = lib.mkAfter ''
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/ha-maintenance.py {
-              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
-            }
-          } ${stateDir}/.hermes/scripts/.ha-maintenance.py.new
-          mv -f ${stateDir}/.hermes/scripts/.ha-maintenance.py.new ${stateDir}/.hermes/scripts/ha-maintenance.py
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/ha-log.py {
-              hermes = lib.getExe' config.services.hermes-agent.package "hermes";
-            }
-          } ${stateDir}/.hermes/scripts/.ha-log.py.new
-          mv -f ${stateDir}/.hermes/scripts/.ha-log.py.new ${stateDir}/.hermes/scripts/ha-log.py
-          install -m 0444 ${
-            pkgs.replaceVars ./hermes-scripts/github-pr.py { gh = lib.getExe ghApp; }
-          } ${stateDir}/.hermes/scripts/.github-pr.py.new
-          mv -f ${stateDir}/.hermes/scripts/.github-pr.py.new ${stateDir}/.hermes/scripts/github-pr.py
-        '';
+        systemd.services.hermes-agent.serviceConfig.BindReadOnlyPaths = readOnlyState;
+        systemd.services."user@${toString hermesId}" = {
+          overrideStrategy = "asDropin";
+          serviceConfig.BindReadOnlyPaths = readOnlyState;
+        };
 
         services.hermes-agent = {
           enable = true;
@@ -378,6 +390,10 @@ in
               ./hermes-skills/home-assistant-changes/SKILL.md;
             "skills/devops/home-assistant-changes/references/make-pr.md" =
               ./hermes-skills/home-assistant-changes/references/make-pr.md;
+            "skills/devops/nixfiles-changes/SKILL.md" =
+              ./hermes-skills/nixfiles-changes/SKILL.md;
+            "skills/devops/nixfiles-changes/references/make-pr.md" =
+              ./hermes-skills/nixfiles-changes/references/make-pr.md;
           };
           inherit stateDir;
           # Shared-state permissions: config.yaml group-writable, so the host

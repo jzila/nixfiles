@@ -1,0 +1,57 @@
+# Flags PRs that touch the files defining Hermes's own permissions or argo's
+# system: Hermes's container, webhook scripts and skills, the Home Assistant
+# runners, argo's host config (its module list), the flake and its lock (an
+# input bump pulls arbitrary upstream code), and .github/ itself. John's
+# approval already gates every merge (code owner review, .github/CODEOWNERS);
+# this only makes such a PR stand out among routine ones, with one comment
+# listing the files, kept current on each push and deleted once the PR no
+# longer touches any. It never fails. The `protected` regex below is the one
+# list; AGENTS.md points here.
+name: protected-paths
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  protected-paths:
+    name: Protected paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Comment on changed protected files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          protected='^(\.github/|flake\.(nix|lock)$|hosts/argo/|modules/hermes-container\.nix$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
+          marker='<!-- protected-paths -->'
+          # --no-renames lists both sides of a rename.
+          hits=$(git diff --name-only --no-renames "$BASE...$HEAD" | grep -E "$protected" || true)
+          existing=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n1)
+          if [ -z "$hits" ]; then
+            echo "No protected paths changed."
+            if [ -n "$existing" ]; then gh api -X DELETE "repos/$GH_REPO/issues/comments/$existing"; fi
+            exit 0
+          fi
+          echo "::warning::This PR changes files that define Hermes's own permissions or argo's system."
+          echo "$hits"
+          body=$(printf '%s\n%s\n\n%s\n' "$marker" \
+            "**This PR changes Hermes's own setup or argo's system.** Review these files closely:" \
+            "$(sed 's/.*/- `&`/' <<<"$hits")")
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$existing" -f body="$body" >/dev/null
+          else
+            gh pr comment "$PR" --body "$body"
+          fi
