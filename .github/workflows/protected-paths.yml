@@ -1,7 +1,9 @@
 # Flags PRs that touch the files defining Hermes's own permissions or argo's
-# system: Hermes's container, webhook scripts and skills, the Home Assistant
-# runners, argo's host config (its module list), the flake and its lock (an
-# input bump pulls arbitrary upstream code), and .github/ itself. John's
+# system: Hermes's container, its inner system, credentials, signal-cli,
+# webhook scripts and skills, the Home Assistant runners, argo's and the
+# Hermes VM's host config (the VM deploys main to itself), the step-ca root
+# the webhook trusts, the flake and its lock (an input bump pulls arbitrary
+# upstream code), and .github/ itself. John's
 # approval already gates every merge (code owner review, .github/CODEOWNERS);
 # this only makes such a PR stand out among routine ones, with one comment
 # listing the files, kept current on each push and deleted once the PR no
@@ -34,7 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          protected='^(\.github/|flake\.(nix|lock)$|hosts/argo/|modules/hermes-container\.nix$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
+          protected='^(\.github/|flake\.(nix|lock)$|hosts/(argo|hermes)/|modules/hermes-(container|service|credentials)\.nix$|modules/signal-cli\.nix$|modules/ssh-ca/root_ca\.crt$|modules/hermes-scripts/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
           marker='<!-- protected-paths -->'
           # --no-renames lists both sides of a rename.
           hits=$(git diff --name-only --no-renames "$BASE...$HEAD" | grep -E "$protected" || true)

@@ -33,6 +33,8 @@ jobs:
         host:
           - venator
           - argo
+          # Hermes's VM; its self-deploy waits for this check on main.
+          - hermes
     steps:
       - uses: actions/checkout@v5
 

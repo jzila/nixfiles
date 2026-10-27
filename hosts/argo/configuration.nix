@@ -11,6 +11,12 @@
     ../../modules/ha-gitops.nix
   ];
 
+  # Hermes and the Home Assistant runners, until they move to the hermes VM
+  # on the TrueNAS box (hosts/hermes/README.md, "Cut-over"). Then:
+  #   services.hermesContainer.enable = false;
+  #   services.haGitops.enable = false;
+  services.haGitops.enable = true;
+
   # Networking configuration
   networking = {
     hostName = "argo";
