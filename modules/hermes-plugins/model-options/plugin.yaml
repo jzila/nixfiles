@@ -1,0 +1,5 @@
+name: model-options
+version: 1.0.0
+description: "Delegation backend: each delegate_task task may pick a coding model from delegation.backends.model-options.options; without a pick, the delegation section's route."
+author: jzila/nixfiles
+kind: backend

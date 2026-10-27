@@ -47,6 +47,7 @@ let
   # See BindReadOnlyPaths below.
   readOnlyState = [
     "${scripts}:${hermesHome}/scripts"
+    "${./hermes-plugins/model-options}:${hermesHome}/plugins/model-options"
     "${hermesHome}/skills/devops/home-assistant-changes"
     "${hermesHome}/skills/devops/nixfiles-changes"
     "${hermesHome}/config.yaml"
@@ -155,6 +156,8 @@ in
     # The user manager keeps its view until the container restarts.
     systemd.tmpfiles.rules = [
       "d ${hermesHome}/scripts 2770 hermes hermes -"
+      "d ${hermesHome}/plugins 2770 hermes hermes -"
+      "d ${hermesHome}/plugins/model-options 2770 hermes hermes -"
     ];
     systemd.services.hermes-agent.serviceConfig.BindReadOnlyPaths = readOnlyState;
     systemd.services."user@${toString hermesId}" = {
@@ -212,13 +215,48 @@ in
         # gateway spawn workers that act on tasks by themselves.
         kanban.dispatch_in_gateway = false;
         # Subagents (delegate_task, e.g. the HA PR work) run on a coding
-        # model in Ollama Cloud, through argo's signed-in Ollama: no key
-        # here. The work they're given leaves the house; chat stays local.
-        delegation = {
+        # model in the cloud: by default one in Ollama Cloud, through
+        # argo's signed-in Ollama (no key here). The model-options backend
+        # (hermes-plugins/model-options) lets each task pick another; the
+        # OpenRouter ones need OPENROUTER_API_KEY in gateway.env and are
+        # refused without it. The work they're given leaves the house; chat
+        # stays local.
+        delegation = rec {
+          backend = "model-options";
           model = "glm-5.3:cloud";
           base_url = "http://${hostAddress}:11434/v1";
           api_key = "ollama"; # Ollama ignores it
           request_overrides.reasoning_effort = "high";
+          backends.model-options.options = [
+            {
+              name = "glm";
+              description = "GLM 5.3 on Ollama Cloud, the usual one: fast, no per-token cost.";
+              inherit model base_url api_key request_overrides;
+            }
+            {
+              name = "argon";
+              description = "Gemini 4 Argon on OpenRouter, standard tier: stronger at large or tricky code, seconds per step, paid.";
+              provider = "openrouter";
+              model = "google/gemini-4-argon";
+              reasoning_effort = "high";
+            }
+            {
+              name = "argon-flex";
+              description = "Gemini 4 Argon on OpenRouter's flex tier: half the price, but each step can take minutes and fails when Google is busy; only for long background work nobody is waiting on.";
+              provider = "openrouter";
+              model = "google/gemini-4-argon";
+              reasoning_effort = "high";
+              request_overrides.service_tier = "flex";
+            }
+          ];
+        };
+        plugins.enabled = [ "model-options" ];
+        # On OpenRouter, only endpoints that don't store or train on
+        # prompts; flex answers can take up to ~15 minutes.
+        provider_routing.models."google/gemini-4-argon".data_collection = "deny";
+        providers.openrouter.models."google/gemini-4-argon" = {
+          timeout_seconds = 1200;
+          stale_timeout_seconds = 1200;
         };
         # Webhook receiver, reachable only through nginx above (loopback
         # is also the only bind Hermes allows without request signing;
