@@ -36,7 +36,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          protected='^(\.github/|flake\.(nix|lock)$|hosts/(argo|hermes)/|modules/hermes-(container|service|credentials)\.nix$|modules/signal-cli\.nix$|modules/ssh-ca/root_ca\.crt$|modules/hermes-scripts/|modules/hermes-plugins/|modules/hermes-skills/|modules/ha-gitops\.nix$)'
+          protected='^(\.github/|flake\.(nix|lock)$|hosts/(argo|hermes)/|modules/hermes-(container|service|credentials)\.nix$|modules/signal-cli\.nix$|modules/ssh-ca/root_ca\.crt$|modules/hermes-scripts/|modules/hermes-plugins/|modules/hermes-skills/|modules/ha-gitops\.nix$|modules/runner-(containers|guard)\.nix$)'
           marker='<!-- protected-paths -->'
           # --no-renames lists both sides of a rename.
           hits=$(git diff --name-only --no-renames "$BASE...$HEAD" | grep -E "$protected" || true)
