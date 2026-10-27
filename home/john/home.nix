@@ -321,5 +321,20 @@ in
       }
     '';
   };
+  # The local step CA as the `step` CLI's default, i.e. what `step ca bootstrap`
+  # writes, with the root from the repo. force: replaces the files an earlier
+  # `step ca bootstrap` left, rather than refusing to clobber them.
+  home.file.".step/certs/root_ca.crt" = {
+    source = ../../modules/ssh-ca/root_ca.crt;
+    force = true;
+  };
+  home.file.".step/config/defaults.json" = {
+    text = builtins.toJSON {
+      ca-url = "https://smallstep-ca.local.zila.dev:9000";
+      fingerprint = "01629e117322b35b0e95deb577ce2e88e855275905ea38dabf612f9317e375f5";
+      root = "${config.home.homeDirectory}/.step/certs/root_ca.crt";
+    };
+    force = true;
+  };
   home.packages = commonPackages ++ linuxPackages ++ darwinPackages;
 }

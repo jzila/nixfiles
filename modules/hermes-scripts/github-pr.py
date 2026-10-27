@@ -107,7 +107,7 @@ def items(pr):
         login = c["author"]["login"] if c["author"] else ""
         if login == "github-actions" and "<!-- ha-plan -->" in c["body"]:
             plan = re.search(r"^Plan: .*$|^No changes\..*$", c["body"], re.M)
-            text = "argo's plan comment updated: " + (plan.group(0) if plan else "see the PR")
+            text = "plan comment updated: " + (plan.group(0) if plan else "see the PR")
         else:
             text = f"comment: {clip(c['body'])}"
         yield c["id"], c["updatedAt"], login, text, f"issues/comments/{c['databaseId']}"
@@ -149,7 +149,7 @@ def main():
             elif login in TRUSTED:
                 new.append(f"- {login}: {text}")
                 react.append(target)
-            elif login == "github-actions" and text.startswith("argo's plan"):
+            elif login == "github-actions" and text.startswith("plan comment updated"):
                 new.append(f"- {login}: {text}")
         # A post with nothing new right after one that had something is
         # most likely curl retrying because Hermes refused that turn (e.g.
