@@ -11,11 +11,11 @@
     ../../modules/ha-gitops.nix
   ];
 
-  # Hermes and the Home Assistant runners, until they move to the hermes VM
-  # on the TrueNAS box (hosts/hermes/README.md, "Cut-over"). Then:
-  #   services.hermesContainer.enable = false;
-  #   services.haGitops.enable = false;
-  services.haGitops.enable = true;
+  # Hermes and the Home Assistant runners moved to the hermes VM on the
+  # TrueNAS box (hosts/hermes/). Kept imported, off, for a rollback
+  # (hosts/hermes/README.md, "Rollback"); their state stays in /var/lib.
+  services.hermesContainer.enable = false;
+  services.haGitops.enable = false;
 
   # Networking configuration
   networking = {
