@@ -74,8 +74,17 @@ chat or a command line; copy files (`scp`, or `cat file | ssh … 'install -m 06
 | What | Where (in the VM) | Then |
 | --- | --- | --- |
 | A **new** private key for the zila-hermes GitHub App (app settings → Private keys → Generate) | `/etc/hermes/github-app.pem`, root 0600 | `systemctl start hermes-github-token`; `/run/hermes-github/token` appears |
-| A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
-| The webhook server certificate from the step CA, for the VM's name and address (`step ca certificate hermes.local.zila.dev server.crt server.key --provisioner admin --not-after 720h --san hermes.local.zila.dev --san <address>`) | `/etc/hermes-tls/server.{crt,key}`, `chown root:60` (nginx's gid; the VM has no nginx group of its own), 0640 | nginx in the container starts by itself (`hermes-tls-first`); `hermes-tls-renew` renews it daily within its last 7 days and reloads it |
+| A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 (below) | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
+| The webhook server certificate from the step CA, for the VM's name and address (`step ca certificate hermes.local.zila.dev server.crt server.key --provisioner admin --not-after 720h --san hermes.local.zila.dev --san <address>`, on your machine: `step` defaults to the local CA through Home Manager's `~/.step`, or a `step ca bootstrap`) | `/etc/hermes-tls/server.{crt,key}`, `chown root:60` (nginx's gid; the VM has no nginx group of its own), 0640 | nginx in the container starts by itself (`hermes-tls-first`); `hermes-tls-renew` renews it daily within its last 7 days and reloads it |
+
+The Tailscale key has no file to copy; in the VM, read it at a hidden prompt
+(works in bash and zsh):
+
+```sh
+printf 'Tailscale auth key: '; read -rs k; echo
+install -d -m 0700 /etc/tailscale
+printf '%s\n' "$k" | install -m 0600 /dev/stdin /etc/tailscale/authkey; unset k
+```
 
 Of `/etc/hermes` (root 0700), only `gateway.env` is bound read-only into the
 container, as `/run/host-secrets/hermes/gateway.env`, as on argo; the gateway

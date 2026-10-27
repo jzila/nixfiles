@@ -120,6 +120,8 @@ in
       ];
     };
     systemd.services.tailscaled-autoconnect.unitConfig.ConditionPathExists = tailscaleKey;
+    # The key's directory, so it can be dropped in.
+    systemd.tmpfiles.rules = [ "d /etc/tailscale 0700 root root -" ];
 
     networking.nameservers = cfg.resolvers;
     # Only ssh on the VM itself; the webhook ports are forwarded into the
