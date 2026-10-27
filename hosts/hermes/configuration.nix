@@ -120,12 +120,18 @@ in
       ];
     };
     systemd.services.tailscaled-autoconnect.unitConfig.ConditionPathExists = tailscaleKey;
+    # tailscaled writes its rules as its own nftables tables, so the ruleset
+    # reload (which only replaces NixOS's tables) leaves them alone.
+    systemd.services.tailscaled.environment.TS_DEBUG_FIREWALL_MODE = "nftables";
     # The key's directory, so it can be dropped in.
     systemd.tmpfiles.rules = [ "d /etc/tailscale 0700 root root -" ];
 
     networking.nameservers = cfg.resolvers;
+    # The firewall, NAT and the containers' tables (hermes-container.nix,
+    # ha-gitops.nix) as one nftables ruleset, replaced atomically on a switch.
+    networking.nftables.enable = true;
     # Only ssh on the VM itself; the webhook ports are forwarded into the
-    # container (hermes-container.nix's hermes-ingress), not served here.
+    # container (hermes-container.nix's nftables table), not served here.
     networking.firewall.allowedTCPPorts = lib.mkForce [ 22 ];
 
     # ── Hermes, in its container ──────────────────────────────────────────

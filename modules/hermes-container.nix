@@ -79,11 +79,11 @@ let
   cfg = config.services.hermesContainer;
 
   # Firewall lines from the options; empty lists add nothing.
-  hostPortRules = lib.concatMapStrings (port: ''
-    iptables -w -A hermes-to-host -p tcp --dport ${toString port} -j nixos-fw-accept
-  '') cfg.hostPorts;
+  hostPortRules = lib.optionalString (cfg.hostPorts != [ ]) ''
+    iifname "ve-hermes" tcp dport { ${lib.concatMapStringsSep ", " toString cfg.hostPorts} } accept
+  '';
   egressRules = lib.concatMapStrings (t: ''
-    iptables -w -A hermes-egress -d ${t.address} -p tcp --dport ${toString t.port} -j RETURN
+    ip daddr ${t.address} tcp dport ${toString t.port} accept
   '') cfg.allowedLanTargets;
 in
 {
@@ -130,7 +130,7 @@ in
       default = [ "192.168.1.135" "192.168.1.1" ];
       description = "DNS servers the container may query (Pi-hole, the router).";
     };
-    # An address, not a name: iptables resolves names once, at load, and the
+    # An address, not a name: nft resolves names once, at load, and the
     # firewall fails to start if DNS isn't up yet. The client certificate is
     # what authenticates.
     homeAssistantAddress = lib.mkOption {
@@ -193,8 +193,9 @@ in
   };
 
   # Network grants for the container, like the bindMounts below for files:
-  #   - to the host: ollama only. Inserted ahead of the host's allowedTCPPorts,
-  #     which apply on every interface and would otherwise also open Piper,
+  #   - to the host: hostPorts only (ollama on argo). Everything else from the
+  #     container is rejected, including the host's allowedTCPPorts, which
+  #     apply on every interface and would otherwise also open Piper,
   #     Parakeet and dev ports to the container.
   #   - forwarded: DNS to Pi-hole and the router, nothing else on private or
   #     local ranges (LAN, Tailscale CGNAT, link-local, multicast), internet
@@ -203,48 +204,42 @@ in
   #   - inbound: the webhook port, DNATed to the container for Home
   #     Assistant's address only; the PR events port, for the tailnet only
   #     (tailnet policy narrows it to tag:github-ci).
-  networking.firewall.extraCommands = ''
-    iptables -w -N hermes-to-host 2>/dev/null || iptables -w -F hermes-to-host
-    ${hostPortRules}iptables -w -A hermes-to-host -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
-    iptables -w -A hermes-to-host -j nixos-fw-refuse
-    iptables -w -I nixos-fw 1 -i ve-hermes -j hermes-to-host
+  # Its own nftables table (the host must use nftables): loaded atomically
+  # with the rest of the ruleset, and gone at the next switch if this module
+  # is turned off. Base chains run just before the firewall's own (priority
+  # filter - 1); a packet needs every hook's chains to accept it, so these
+  # only narrow what the firewall would allow.
+  assertions = [{
+    assertion = config.networking.nftables.enable;
+    message = "services.hermesContainer needs networking.nftables.enable.";
+  }];
+  networking.firewall.interfaces.ve-hermes.allowedTCPPorts = cfg.hostPorts;
+  networking.nftables.tables.hermes = {
+    family = "inet";
+    content = ''
+      chain to-host {
+        type filter hook input priority filter - 1; policy accept;
+        iifname "ve-hermes" ct state established,related accept
+        ${hostPortRules}iifname "ve-hermes" reject
+      }
 
-    iptables -w -N hermes-egress 2>/dev/null || iptables -w -F hermes-egress
-    iptables -w -A hermes-egress -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
-    for resolver in ${lib.concatStringsSep " " cfg.resolvers}; do
-      for proto in udp tcp; do
-        iptables -w -A hermes-egress -d "$resolver" -p "$proto" --dport 53 -j RETURN
-      done
-    done
-    ${egressRules}for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
-      iptables -w -A hermes-egress -d "$net" -j REJECT
-    done
-    iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
-    iptables -w -I FORWARD 1 -i ve-hermes -j hermes-egress
+      chain egress {
+        type filter hook forward priority filter - 1; policy accept;
+        iifname != "ve-hermes" accept
+        ct state established,related accept
+        ip daddr { ${lib.concatStringsSep ", " cfg.resolvers} } meta l4proto { tcp, udp } th dport 53 accept
+        ${egressRules}ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 224.0.0.0/4 } reject
+      }
 
-    iptables -w -t nat -N hermes-ingress 2>/dev/null || iptables -w -t nat -F hermes-ingress
-    iptables -w -t nat -A hermes-ingress -s ${homeAssistantAddress} -p tcp --dport ${toString webhookPort} \
-      -m addrtype --dst-type LOCAL -j DNAT --to-destination ${localAddress}:${toString webhookPort}
-    iptables -w -t nat -A hermes-ingress -i tailscale0 -s 100.64.0.0/10 -p tcp --dport ${toString prEventsPort} \
-      -m addrtype --dst-type LOCAL -j DNAT --to-destination ${localAddress}:${toString prEventsPort}
-    iptables -w -t nat -D PREROUTING -j hermes-ingress 2>/dev/null || true
-    iptables -w -t nat -I PREROUTING 1 -j hermes-ingress
-  '';
-  # Also run before every reload. The chains must go, not just their jumps:
-  # hermes-to-host's rules reference nixos-fw-accept/-refuse, which the
-  # firewall deletes and recreates, so a leftover hermes-to-host makes that
-  # fail and the reload falls back to stopping the firewall altogether.
-  networking.firewall.extraStopCommands = ''
-    iptables -w -D FORWARD -i ve-hermes -j hermes-egress 2>/dev/null || true
-    iptables -w -t nat -D PREROUTING -j hermes-ingress 2>/dev/null || true
-    iptables -w -D nixos-fw -i ve-hermes -j hermes-to-host 2>/dev/null || true
-    for chain in hermes-to-host hermes-egress; do
-      iptables -w -F "$chain" 2>/dev/null || true
-      iptables -w -X "$chain" 2>/dev/null || true
-    done
-    iptables -w -t nat -F hermes-ingress 2>/dev/null || true
-    iptables -w -t nat -X hermes-ingress 2>/dev/null || true
-  '';
+      chain ingress {
+        type nat hook prerouting priority dstnat - 1; policy accept;
+        ip saddr ${homeAssistantAddress} tcp dport ${toString webhookPort} fib daddr type local \
+          dnat ip to ${localAddress}:${toString webhookPort}
+        iifname "tailscale0" ip saddr 100.64.0.0/10 tcp dport ${toString prEventsPort} fib daddr type local \
+          dnat ip to ${localAddress}:${toString prEventsPort}
+      }
+    '';
+  };
   # Leave the container's veth to the container configuration.
   networking.networkmanager.unmanaged = [ "interface-name:ve-*" ];
 
