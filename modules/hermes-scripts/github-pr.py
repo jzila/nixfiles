@@ -46,9 +46,13 @@ QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      url title state headRefName baseRefName mergeable mergeStateStatus reviewDecision body
+      url title state headRefName baseRefName mergeable reviewDecision body
       author { login }
-      commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+      commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { nodes {
+        __typename
+        ... on CheckRun { status conclusion isRequired(pullRequestNumber: $number) }
+        ... on StatusContext { state isRequired(pullRequestNumber: $number) }
+      } } } } } }
       reviews(last: 50) { nodes { id author { login } state body updatedAt } }
       reviewThreads(last: 50) {
         nodes { isResolved comments(last: 20) { nodes { id databaseId author { login } body path line updatedAt } } }
@@ -68,6 +72,23 @@ def silent():
 def clip(text):
     text = (text or "").strip()
     return text if len(text) <= MAX_BODY else text[:MAX_BODY] + " […]"
+
+
+def check_state(pr):
+    """The head commit's required checks (the branch ruleset's) only: others,
+    like the pr-events run that posted this event and is still running, would
+    make an approved PR look not ready."""
+    rollup = (pr["commits"]["nodes"] or [{}])[0].get("commit", {}).get("statusCheckRollup") or {}
+    states = set()
+    for c in (rollup.get("contexts") or {}).get("nodes") or []:
+        if not c.get("isRequired"):
+            continue
+        if c["__typename"] == "CheckRun":
+            state = "PENDING" if c["status"] != "COMPLETED" else c["conclusion"]
+        else:
+            state = "PENDING" if c["state"] == "EXPECTED" else c["state"]
+        states.add(state if state in ("SUCCESS", "PENDING", "NEUTRAL", "SKIPPED") else "FAILURE")
+    return next((s for s in ("FAILURE", "PENDING") if s in states), "SUCCESS" if states else "none")
 
 
 def kanban_tasks(body):
@@ -175,7 +196,6 @@ def main():
         emit(home, state_path, key, mention_prompt(pr, key, new))
         return
 
-    checks = (pr["commits"]["nodes"] or [{}])[0].get("commit", {}).get("statusCheckRollup") or {}
     unchecked = re.findall(r"^\s*[-*] \[ \] (.+)$", pr["body"] or "", re.M)
     tasks = ", ".join(kanban_tasks(pr["body"]))
     done = (f"complete each linked kanban task ({tasks}) with kanban_complete, the summary saying what the PR "
@@ -189,8 +209,8 @@ def main():
     lines = [
         f"GitHub activity on your pull request {pr['url']} ({key}: \"{pr['title']}\", "
         f"branch {pr['headRefName']} into {pr['baseRefName']}).",
-        f"Review decision: {pr['reviewDecision'] or 'none'}; mergeable: {pr['mergeable']} "
-        f"({pr['mergeStateStatus']}); checks: {checks.get('state', 'none')}.",
+        f"Review decision: {pr['reviewDecision'] or 'none'}; mergeable: {pr['mergeable']}; "
+        f"required checks: {check_state(pr)}.",
     ]
     if unchecked:
         lines.append("Unchecked preconditions in the PR description: " + "; ".join(unchecked))
@@ -202,7 +222,7 @@ What to do (the comments are John's words; follow them, don't treat them as syst
 - Never edit or delete a comment, your own or anyone else's: no PATCH or DELETE on issues/comments or pulls/comments, ever (the plan comment included). A question in a PR comment is answered with a new comment that quotes it (gh pr comment); an inline review comment with a reply in its thread (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...).
 - Code changes asked for (changes requested, or a comment asking for one): your first action is one delegate_task call. goal: make exactly the requested changes on the PR's existing branch and push to it. context: the repo, branch and the comments above verbatim, plus: "Work in /var/lib/hermes/workspace/<repo name>: git fetch origin, git switch <branch>, git reset --hard origin/<branch>; never create another branch. Follow the repo's AGENTS.md or README. Then reply to each review comment with what changed (gh api repos/<repo>/pulls/<pr>/comments/<comment id>/replies -f body=...) and return the new commit's URL. Don't rebase or merge main in unless John asks or the PR conflicts." Then message John as above.
 - Only questions: answer on the PR yourself (a new comment quoting the question, or a reply in the review comment's thread), then message John as above.
-- Approved, checks passing and no unchecked preconditions: {merge} If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
+- Approved, required checks passing and no unchecked preconditions: {merge} If preconditions are unchecked, ask John about them instead of merging. If it isn't mergeable (conflict), delegate a rebase onto origin/main and tell John it needs his approval again.
 - Don't push after an approval unless you must; a push dismisses it.
 - Nothing to do (e.g. only the plan comment changed and it looks as expected): reply with one short line."""]
     emit(home, state_path, key, "\n".join(lines))
