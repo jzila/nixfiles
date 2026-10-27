@@ -276,37 +276,31 @@ in
     # Like the hermes container's grants: nothing on this host; forwarded,
     # DNS, Home Assistant (HTTPS and the add-on's SSH), the internet, and
     # nothing else on private or local ranges; no new connections in.
-    networking.firewall.extraCommands = ''
-      iptables -w -N ha-runner-to-host 2>/dev/null || iptables -w -F ha-runner-to-host
-      iptables -w -A ha-runner-to-host -m conntrack --ctstate ESTABLISHED,RELATED -j nixos-fw-accept
-      iptables -w -A ha-runner-to-host -j nixos-fw-refuse
-      iptables -w -I nixos-fw 1 -i ve-ha+ -j ha-runner-to-host
+    # Its own nftables table, as the hermes container's (hermes-container.nix).
+    assertions = [{
+      assertion = config.networking.nftables.enable;
+      message = "services.haGitops.containers needs networking.nftables.enable.";
+    }];
+    networking.nftables.tables.ha-runners = {
+      family = "inet";
+      content = ''
+        chain to-host {
+          type filter hook input priority filter - 1; policy accept;
+          iifname "ve-ha*" ct state established,related accept
+          iifname "ve-ha*" reject
+        }
 
-      iptables -w -N ha-runner-egress 2>/dev/null || iptables -w -F ha-runner-egress
-      iptables -w -A ha-runner-egress -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
-      for resolver in ${lib.concatStringsSep " " resolvers}; do
-        for proto in udp tcp; do
-          iptables -w -A ha-runner-egress -d "$resolver" -p "$proto" --dport 53 -j RETURN
-        done
-      done
-      iptables -w -A ha-runner-egress -d ${homeAssistantAddress} -p tcp -m multiport --dports 22,443 -j RETURN
-      for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16 224.0.0.0/4; do
-        iptables -w -A ha-runner-egress -d "$net" -j REJECT
-      done
-      iptables -w -D FORWARD -i ve-ha+ -j ha-runner-egress 2>/dev/null || true
-      iptables -w -I FORWARD 1 -i ve-ha+ -j ha-runner-egress
-      iptables -w -D FORWARD -o ve-ha+ -m conntrack --ctstate NEW -j REJECT 2>/dev/null || true
-      iptables -w -I FORWARD 1 -o ve-ha+ -m conntrack --ctstate NEW -j REJECT
-    '';
-    networking.firewall.extraStopCommands = ''
-      iptables -w -D FORWARD -i ve-ha+ -j ha-runner-egress 2>/dev/null || true
-      iptables -w -D FORWARD -o ve-ha+ -m conntrack --ctstate NEW -j REJECT 2>/dev/null || true
-      iptables -w -D nixos-fw -i ve-ha+ -j ha-runner-to-host 2>/dev/null || true
-      for chain in ha-runner-to-host ha-runner-egress; do
-        iptables -w -F "$chain" 2>/dev/null || true
-        iptables -w -X "$chain" 2>/dev/null || true
-      done
-    '';
+        chain egress {
+          type filter hook forward priority filter - 1; policy accept;
+          oifname "ve-ha*" ct state new reject
+          iifname != "ve-ha*" accept
+          ct state established,related accept
+          ip daddr { ${lib.concatStringsSep ", " resolvers} } meta l4proto { tcp, udp } th dport 53 accept
+          ip daddr ${homeAssistantAddress} tcp dport { 22, 443 } accept
+          ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 224.0.0.0/4 } reject
+        }
+      '';
+    };
   })
   ]);
 }
