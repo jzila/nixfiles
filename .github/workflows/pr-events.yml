@@ -1,6 +1,6 @@
-# Tell Hermes on argo about reviews and comments on a PR. Joins the tailnet as
+# Tell Hermes (its VM, tailnet name hermes) about reviews and comments on a PR. Joins the tailnet as
 # tag:github-ci (workload identity federation: no Tailscale secret stored here;
-# the tailnet policy lets the tag reach only argo:8646) and posts just the repo
+# the tailnet policy lets the tag reach only the VM's 8646) and posts just the repo
 # and PR number. Hermes reads the PR from GitHub itself, so the post is only a
 # hint. Per PR, at most one run posts at a time and one more waits: a burst (a
 # review with several comments) is the first post plus one catch-up, and the
@@ -41,4 +41,4 @@ jobs:
           jq -nc --arg repo "$REPO" --argjson pr "$PR" '{repo: $repo, pr: $pr}' |
             curl -fsS --retry 3 --retry-all-errors --max-time 20 \
               -H 'Content-Type: application/json' --data-binary @- \
-              http://100.114.52.57:8646/webhooks/github-pr
+              http://100.114.179.48:8646/webhooks/github-pr
