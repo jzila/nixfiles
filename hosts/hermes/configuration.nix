@@ -21,8 +21,8 @@
 #     doesn't even see its socket. Hermes doesn't build; CI checks its PRs.
 #   - Secrets, provisioned out of band, never in this repo, root-only:
 #     /etc/hermes (gateway.env, github-app.pem: the VM's own key for the
-#     zila-hermes app; bound read-only into the container, as on argo, where
-#     only root can traverse it), /etc/hermes-tls (the webhook certificate
+#     zila-hermes app; only gateway.env is bound read-only into the
+#     container, as on argo), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
 #     only), /etc/ha-tofu/ha and /etc/ha-tofu/ha-pr (the runners'). Each
 #     service waits for its secret.

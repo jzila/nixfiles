@@ -203,15 +203,13 @@
       # Custom packages, exposed so they can be built and tested directly:
       #   nix build .#opencode-bin
       packages = lib.genAttrs [ "aarch64-darwin" "x86_64-darwin" "aarch64-linux" "x86_64-linux" ]
-        (system: mkLocalPackages (mkPkgsUnstable system))
-        // {
-          x86_64-linux = mkLocalPackages (mkPkgsUnstable "x86_64-linux") // {
+        (system: mkLocalPackages (mkPkgsUnstable system)
+          // lib.optionalAttrs (system == "x86_64-linux") {
             # The hermes VM's first disk: a UEFI qcow2 of nixosConfigurations.hermes,
             # imported into a zvol on the TrueNAS box (hosts/hermes/README.md).
             # Built once; after that the VM deploys main to itself.
             hermes-image = self.nixosConfigurations.hermes.config.system.build.image;
-          };
-        };
+          });
 
       # The hermes VM's deploy and health-check logic, against stubs
       # (hosts/hermes/deploy/test.sh).

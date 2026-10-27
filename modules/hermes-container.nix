@@ -29,7 +29,10 @@
 #     skills and cron jobs. UID/GID 870 is fixed on both sides so ownership
 #     lines up across the bind mount.
 #   - Secrets: /etc/hermes/gateway.env on the host (root, 0600; never in this
-#     repo) is mounted read-only into the container. Hermes's activation merges
+#     repo) is mounted read-only into the container, that one file and nothing
+#     else of /etc/hermes (the GitHub App key beside it stays on the host).
+#     The mount holds the file the container started with, so after replacing
+#     it restart the container, not just the gateway. Hermes's activation merges
 #     it into $HERMES_HOME/.env, which the hermes group can read, so keep only
 #     values john may see there (bot number, allowlist, the signal-cli URL).
 #   - Webhooks: Home Assistant (and only it) reaches Hermes's webhook receiver
@@ -255,8 +258,9 @@ in
         hostPath = stateDir;
         isReadOnly = false;
       };
-      "/run/host-secrets/hermes" = {
-        hostPath = "/etc/hermes";
+      # Only gateway.env: the rest of /etc/hermes (the app key) stays out.
+      "/run/host-secrets/hermes/gateway.env" = {
+        hostPath = "/etc/hermes/gateway.env";
         isReadOnly = true;
       };
       "/run/host-secrets/hermes-tls" = {

@@ -5,7 +5,7 @@
 # in the hermes VM alike; see the container's header for the design.
 #
 # The container provides, as read-only bind mounts of the host's copies:
-#   /run/host-secrets/hermes        gateway.env (root-only)
+#   /run/host-secrets/hermes        gateway.env alone (root-only)
 #   /run/host-secrets/hermes-tls    the webhook server certificate (nginx's group)
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
 # plus Hermes's state at /var/lib/hermes, and where ollama is in

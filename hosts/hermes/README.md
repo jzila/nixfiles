@@ -9,8 +9,8 @@ containers:
 - `ha` and `ha-pr`: the Home Assistant runners (`modules/ha-gitops.nix`).
 
 The VM itself keeps the credentials (its own GitHub App key and token, the
-webhook certificate, `gateway.env`), bound read-only into the hermes container
-as on argo. It also runs Tailscale and its own deploy.
+webhook certificate, `gateway.env`); the hermes container gets read-only
+`gateway.env`, the certificate and the token, never the key, as on argo. It also runs Tailscale and its own deploy.
 
 TrueNAS defines the VM; `configuration.nix` is the system on its disk. It is
 booted once from an image built here, and from then on it deploys `main` to
@@ -74,12 +74,12 @@ chat or a command line; copy files (`scp`, or `cat file | ssh … 'install -m 06
 | What | Where (in the VM) | Then |
 | --- | --- | --- |
 | A **new** private key for the zila-hermes GitHub App (app settings → Private keys → Generate) | `/etc/hermes/github-app.pem`, root 0600 | `systemctl start hermes-github-token`; `/run/hermes-github/token` appears |
-| A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 (not in `/etc/hermes`, which the container sees) | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
+| A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
 | The webhook server certificate from the step CA, for the VM's name and address (`step ca certificate hermes.local.zila.dev server.crt server.key --provisioner admin --not-after 720h --san hermes.local.zila.dev --san <address>`) | `/etc/hermes-tls/server.{crt,key}`, `chown root:60` (nginx's gid; the VM has no nginx group of its own), 0640 | nginx in the container starts by itself (`hermes-tls-first`); `hermes-tls-renew` renews it daily within its last 7 days and reloads it |
 
-`/etc/hermes` (root 0700) is bound read-only into the container as
-`/run/host-secrets/hermes`, as on argo: only root can traverse it, and the
-gateway gets `gateway.env` through systemd. `gateway.env`, the signal-cli data
+Of `/etc/hermes` (root 0700), only `gateway.env` is bound read-only into the
+container, as `/run/host-secrets/hermes/gateway.env`, as on argo; the gateway
+gets it through systemd, and the app key never enters the container. `gateway.env`, the signal-cli data
 and the runners' credentials wait for the cut-over.
 
 Tailnet policy (you edit it): let `tag:github-ci` reach `tag:hermes` on
@@ -179,7 +179,6 @@ Pick a quiet moment: no Home Assistant workflow running
    ```nix
    services.hermesContainer.enable = false;
    services.haGitops.enable = false;
-   services.ollama.allowedClients = [ "<the VM's address>" ];
    ```
    then `sudo nixos-rebuild switch --flake .#argo`. Then on GitHub, remove the
    offline runners `argo-ha` and `argo-ha-pr` (repo settings → Runners), delete
@@ -230,6 +229,8 @@ deploying itself. Re-pin the NIC's MAC so the address stays put.
   runners: `nixos-container run ha -- journalctl -u github-runner-ha`.
 - Booting an older generation from the boot menu works, but the next deploy
   round switches back to the deployed commit; pause first to stay there.
-- `gateway.env` changes: `nixos-container run hermes -- systemctl restart hermes-agent`.
+- `gateway.env` changes: `systemctl restart container@hermes` (the container's
+  mount holds the file it started with, so a replaced file needs a restart of
+  the container, not just the gateway).
 - A deploy that changes the container's system restarts the container (the
   switch does), then checks its health from inside.

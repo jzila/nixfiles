@@ -15,7 +15,6 @@
   # on the TrueNAS box (hosts/hermes/README.md, "Cut-over"). Then:
   #   services.hermesContainer.enable = false;
   #   services.haGitops.enable = false;
-  #   services.ollama.allowedClients = [ "<the VM's LAN address>" ];
   services.haGitops.enable = true;
 
   # Networking configuration
