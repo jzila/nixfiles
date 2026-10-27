@@ -147,7 +147,10 @@ in
       "/etc/hermes/github-app.pem";
     # nginx in the container waits for the certificate (hermes-service.nix):
     # start it once the first one is in place. (Stays active, so the path
-    # unit doesn't fire again; renewals reload nginx themselves.)
+    # unit doesn't fire again; renewals reload nginx themselves.) Only if the
+    # container is running: requiring it would start a stopped container, and
+    # stopping the container would stop this unit and let the path unit fire
+    # again. A container started later finds the certificate at boot.
     systemd.paths.hermes-tls-first = {
       wantedBy = [ "paths.target" ];
       pathConfig.PathExists = "/etc/hermes-tls/server.crt";
@@ -155,13 +158,16 @@ in
     systemd.services.hermes-tls-first = {
       description = "Start nginx in the hermes container once it has a certificate";
       after = [ "container@hermes.service" ];
-      requires = [ "container@hermes.service" ];
-      path = [ pkgs.nixos-container ];
+      path = [ pkgs.nixos-container pkgs.systemd ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
       };
-      script = "nixos-container run hermes -- systemctl reload-or-restart nginx";
+      script = ''
+        if systemctl is-active -q container@hermes; then
+          nixos-container run hermes -- systemctl reload-or-restart nginx
+        fi
+      '';
     };
 
     # The Home Assistant runners, each in its own container; they start only

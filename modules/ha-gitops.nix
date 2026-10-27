@@ -199,6 +199,12 @@ let
         group = "ha-tofu";
       };
       services.github-runners.${runner} = runners.${runner};
+      # The host sets up the container's network as the container boots, so
+      # the first registration can fail on DNS; the module doesn't retry.
+      systemd.services."github-runner-${runner}".serviceConfig = {
+        Restart = lib.mkForce "on-failure";
+        RestartSec = "30s";
+      };
     };
   };
 in
