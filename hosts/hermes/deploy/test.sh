@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015,SC2016 # `ok` never fails; stub bodies expand at run time
-# Tests deploy.sh and report.sh against stubs of git, curl, nix, nix-env,
-# systemctl, systemd-run and hermes. Run: bash hosts/hermes/deploy/test.sh
+# Tests deploy.sh, report.sh, health.sh, and run.sh with request.sh, against
+# stubs of git, curl, nix, nix-env, systemctl, systemd-run, hermes,
+# nixos-deploy and nixos-container. Run: bash hosts/hermes/deploy/test.sh
 # (also the flake check hermes-deploy). Needs bash, jq, coreutils, util-linux.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -27,6 +28,7 @@ case $url in
   */check-runs*) echo "api checks" >>"$T/calls"; f=checks ;;
   */compare/*) echo "api compare" >>"$T/calls"; f=compare ;;
 esac
+if [ -z "$out" ]; then cat "$T/$f.json"; exit 0; fi
 cp "$T/$f.json" "$out"; printf %s "$(cat "$T/$f.status" 2>/dev/null || echo 200)"'
 stub nix 'echo "nix $*" >>"$T/calls"; [ -e "$T/build-fails" ] && exit 1; echo "$T/sys-$(cat "$T/build")"'
 stub nix-env 'echo "nix-env $*" >>"$T/calls"'
@@ -43,6 +45,7 @@ case $1 in
       ConditionResult) if grep -qx "$u" "$T/condfail" 2>/dev/null; then echo no; else echo yes; fi ;;
       *) echo loaded ;;
     esac ;;
+  restart) echo "systemctl $*" >>"$T/calls" ;;
   is-active) u=${!#}; if grep -qx "$u" "$T/inactive" 2>/dev/null; then echo inactive; exit 3; fi; echo active ;;
 esac'
 # inside: Hermes's container (nixos-container run hermes --), logged and run here.
@@ -243,6 +246,57 @@ expect_call "inside -- systemctl is-active --quiet signal-cli.service"
 expect_call "inside -- curl -s --max-time 10"; expect_call "inside -- curl -fs --max-time 10"
 name="health: ollama unreachable from inside"; hreset; touch "$T/ollama-down"; health HERMES_HEALTH_IN="$T/bin/inside --"
 expect_rc 1; expect_out "ollama on argo is unreachable"
+
+# run.sh with request.sh: the job's request, the log and the verdict.
+# nixos-deploy: prints a line, deploys $T/deploys (if any), exits $T/deploy-rc.
+stub nixos-deploy 'echo "nixos-deploy" >>"$T/calls"; echo "deploying"
+[ -s "$T/deploys" ] && cp "$T/deploys" "$T/state/deployed"; exit "$(cat "$T/deploy-rc")"'
+stub nixos-container 'cat "$T/container-system"'
+rreset() {
+  rm -rf "$T/run" "$T/state" "$T/inactive" "$T/deploys"; : >"$T/calls"
+  mkdir -p "$T/run/request" "$T/run/result" "$T/state" "$T/conf"
+  echo "$A" >"$T/state/deployed"; echo 0 >"$T/deploy-rc"
+  echo "SYSTEM_PATH=/nix/store/runner-new " >"$T/conf/nixfiles.conf"
+  echo /nix/store/runner-new >"$T/container-system"
+  echo '{"status": "ahead"}' >"$T/compare.json"
+}
+# A job for commit $1 and the deploy it starts; $out is the job's output,
+# $rc its exit code, $runout the deploy's.
+job() {
+  local renv=(env PATH="$T/bin:$PATH" NIXOS_DEPLOY_RUN_DIR="$T/run" NIXOS_DEPLOY_STATE="$T/state"
+    NIXOS_DEPLOY_POLL=0.1 NIXOS_DEPLOY_SETTLE=0 NIXOS_DEPLOY_RUNNER=nixfiles NIXOS_DEPLOY_CONTAINERS="$T/conf")
+  "${renv[@]}" GITHUB_REPOSITORY=jzila/nixfiles GITHUB_SHA="$1" GITHUB_RUN_ID=7 \
+    bash -o errexit -o nounset -o pipefail "$here/request.sh" >"$T/job.out" 2>&1 &
+  local j=$!
+  until [ -e "$T/run/request/next" ]; do sleep 0.1; done
+  runout=$("${renv[@]}" bash -o errexit -o nounset -o pipefail "$here/run.sh" 2>&1) || true
+  rc=0; wait "$j" || rc=$?
+  out=$(cat "$T/job.out")
+}
+
+name="job: deployed"; rreset; echo "$B" >"$T/deploys"; job "$B"
+expect_rc 0; expect_out "deploying"; expect_out "::notice::Deployed $B"
+[ ! -e "$T/run/request/next" ] && ok || no "request not taken"
+expect_no_call "systemctl restart"
+
+name="job: deploy failed"; rreset; echo 1 >"$T/deploy-rc"; job "$B"
+expect_rc 1; expect_out "::error::$B is not deployed (nixos-deploy exited 1; deployed: $A)"
+
+name="job: paused (nothing deployed)"; rreset; echo '{"status": "behind"}' >"$T/compare.json"; job "$B"
+expect_rc 1; expect_out "::error::$B is not deployed"
+
+name="job: a later commit deployed"; rreset; echo "$C" >"$T/deploys"; job "$B"
+expect_rc 0; expect_out "::notice::Deployed $C, which includes $B"
+
+name="job: runner container restarted after its job"; rreset; echo "$B" >"$T/deploys"
+echo /nix/store/runner-old >"$T/container-system"; job "$B"
+expect_rc 0; expect_call "systemctl restart container@nixfiles"
+grep -q "restarting container@nixfiles onto /nix/store/runner-new" <<<"$runout" && ok || no "deploy didn't say so"
+
+name="job: runner container kept while another job waits"; rreset; echo "$B" >"$T/deploys"
+echo /nix/store/runner-old >"$T/container-system"; stub nixos-container 'touch "$T/run/request/next"; cat "$T/container-system"'
+job "$B"
+expect_rc 0; expect_no_call "systemctl restart"
 
 echo "$pass passed, $failures failed"
 [ "$failures" -eq 0 ]

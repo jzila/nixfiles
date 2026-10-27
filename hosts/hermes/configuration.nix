@@ -1,9 +1,11 @@
-# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts three
+# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts four
 # NixOS containers: hermes (Hermes Agent's gateway, signal-cli, nginx; the
 # same modules/hermes-container.nix as on argo, inner system
-# modules/hermes-service.nix), and ha and ha-pr (the Home Assistant runners,
-# modules/ha-gitops.nix, on modules/runner-containers.nix). The VM itself keeps the credentials
-# (modules/hermes-credentials.nix), Tailscale and its own deploy. TrueNAS
+# modules/hermes-service.nix), ha and ha-pr (the Home Assistant runners,
+# modules/ha-gitops.nix) and nixfiles (this repo's, for its deploy job,
+# ./deploy.nix), the runners all modules/runner-containers.nix. The VM itself
+# keeps the credentials (modules/hermes-credentials.nix), Tailscale and its
+# own deploy. TrueNAS
 # defines the VM (CPUs, memory, the zvol, the NIC); this is the system on its
 # disk. First booted from packages.x86_64-linux.hermes-image, then it deploys
 # main to itself (./deploy.nix). Setup, cut-over and rollback: ./README.md.
@@ -24,8 +26,8 @@
 #     zila-hermes app; only gateway.env is bound read-only into the
 #     container, as on argo), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
-#     only), /etc/ha-tofu/ha and /etc/ha-tofu/ha-pr (the runners'). Each
-#     service waits for its secret.
+#     only), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr and /etc/nixfiles-runner
+#     (the runners'). Each service waits for its secret.
 { config, lib, pkgs, modulesPath, ... }:
 let
   cfg = config.hermesVm;
