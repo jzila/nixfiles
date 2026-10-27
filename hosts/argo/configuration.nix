@@ -194,6 +194,14 @@
     "--operator=john"
   ];
 
+  # The firewall as one nftables ruleset, replaced atomically on a switch:
+  # a module that's turned off leaves no rules behind (its table is
+  # deleted), and a ruleset that fails to load leaves the old one in place.
+  # Podman's netavark follows (its own table); tailscaled writes its rules
+  # as its own tables too, which the reload leaves alone.
+  networking.nftables.enable = true;
+  systemd.services.tailscaled.environment.TS_DEBUG_FIREWALL_MODE = "nftables";
+
   # Speech-to-text for Home Assistant's Assist over the Wyoming protocol. With
   # language "en", wyoming-faster-whisper runs NVIDIA Parakeet TDT 0.6B v2
   # (int8, via sherpa-onnx) instead of Whisper: much faster on CPU, and better
