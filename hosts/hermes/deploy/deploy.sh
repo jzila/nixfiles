@@ -5,7 +5,7 @@
 # nounset, pipefail).
 #
 # Everything is overridable from the environment so a dry run (and the tests in
-# tests/test-deploy.sh) can run it unprivileged:
+# test.sh) can run it unprivileged:
 #   NIXOS_DEPLOY_DRY_RUN=1   do everything but switch and roll back
 #   NIXOS_DEPLOY_STATE       state dir (deployed, system, attempt, report.md, lock)
 #   NIXOS_DEPLOY_PAUSE       kill switches: no deploy while any of these exists

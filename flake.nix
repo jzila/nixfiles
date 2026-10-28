@@ -212,17 +212,15 @@
           });
 
       # The hermes VM's deploy and health-check logic, against stubs
-      # (hosts/hermes/deploy/tests/, one file per script).
+      # (hosts/hermes/deploy/test.sh).
       checks.x86_64-linux.hermes-deploy =
         let pkgs = mkPkgs "x86_64-linux";
         in pkgs.runCommand "hermes-deploy-test" {
           nativeBuildInputs = with pkgs; [ bash jq coreutils util-linux gawk gnugrep gnused findutils shellcheck ];
         } ''
-          cd ${./hosts/hermes/deploy}
-          shellcheck -s bash -x *.sh tests/*.sh
-          failed=0
-          for t in tests/test-*.sh; do bash "$t" || failed=1; done
-          [ "$failed" = 0 ] && touch $out
+          shellcheck -s bash ${./hosts/hermes/deploy}/*.sh
+          bash ${./hosts/hermes/deploy}/test.sh
+          touch $out
         '';
 
       # nix build .#checks.x86_64-linux.ha-log (Hermes's ha-log webhook script)
