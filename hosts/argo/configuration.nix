@@ -8,14 +8,13 @@
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
     ../../modules/hermes-container.nix
-    ../../modules/ha-gitops.nix
   ];
 
-  # Hermes and the Home Assistant runners moved to the hermes VM on the
-  # TrueNAS box (hosts/hermes/). Kept imported, off, for a rollback
-  # (hosts/hermes/README.md, "Rollback"); their state stays in /var/lib.
+  # Hermes moved to the hermes VM on the TrueNAS box (hosts/hermes/). Kept
+  # imported, off, for a rollback (hosts/hermes/README.md, "Rollback"); its
+  # state stays in /var/lib. The Home Assistant runners moved too; they only
+  # run in containers now.
   services.hermesContainer.enable = false;
-  services.haGitops.enable = false;
 
   # Networking configuration
   networking = {

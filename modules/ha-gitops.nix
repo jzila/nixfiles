@@ -1,5 +1,6 @@
 # GitHub Actions runners for jzila/home-assistant, which declares Home Assistant
-# with OpenTofu. Two runners, as two users:
+# with OpenTofu. Two runners, each in its own container
+# (modules/runner-containers.nix), as two users:
 #
 #   ha     holds the Home Assistant credentials (admin token, the SSH key the
 #          add-on forces through /data/gate.sh) and writes the state. Its
@@ -7,11 +8,18 @@
 #   ha-pr  plans pull requests against the state; no credentials, and it can
 #          only read the state.
 #
-# Secrets, root-only in /etc/ha-tofu, reach the runners as systemd credentials:
+# Secrets, root-only in /etc/ha-tofu/<runner>, bound into that runner's
+# container alone as /etc/ha-tofu, reach its jobs as systemd credentials:
 #   token             HA long-lived token of the "OpenTofu" user   (ha)
 #   ssh-apply         SSH key, restricted to the gate's apply role (ha)
 #   state-passphrase  OpenTofu state encryption                    (both)
 #   runner-token      one-hour registration token, consumed at first start
+#
+# Neither Hermes's user nor the other runner can reach a runner's
+# credentials. Both reach Home Assistant (HTTPS and the add-on's SSH). The
+# state (/var/lib/ha-tofu) is bound in read-write for ha, read-only for ha-pr.
+# A container starts only once its directory in /etc/ha-tofu exists
+# (hosts/hermes/README.md).
 #
 # Approval is enforced by the repo's main ruleset at merge time (PR required,
 # John's review as code owner, only John bypasses), so the runner applies
@@ -19,20 +27,6 @@
 #
 # The nightly drift check writes its verdict to /var/lib/ha-tofu/drift/report.md;
 # drift is filed on the hass kanban board, and a clean night completes it.
-#
-# Two places, one at a time (services.haGitops.enable):
-#   argo       the runners are services on the host (as today).
-#   hermes VM  each runner is its own container (containers = true;
-#              modules/runner-containers.nix), so neither Hermes's user nor
-#              the other runner can reach its credentials: /etc/ha-tofu/ha
-#              holds the ha container's, /etc/ha-tofu/ha-pr the ha-pr
-#              container's (state-passphrase, runner-token). Both reach Home
-#              Assistant (HTTPS and the add-on's SSH). The state
-#              (/var/lib/ha-tofu) is bound in read-write for ha, read-only for
-#              ha-pr. A container starts only once its directory in
-#              /etc/ha-tofu exists, which is the cut-over's step
-#              (hosts/hermes/README.md): never runners in two places, and
-#              never against a stale copy of the state.
 { config, lib, pkgs, hermes-agent, ... }:
 let
   cfg = config.services.haGitops;
@@ -41,7 +35,7 @@ let
   secretsDir = "/etc/ha-tofu";
   hermesHome = "/var/lib/hermes/.hermes";
   homeAssistantAddress = "192.168.1.153";
-  # Fixed in containers mode, so ownership of the bound state lines up.
+  # Fixed, so ownership of the bound state lines up inside the containers.
   haTofuId = 880;
   haPrId = 881;
   # Inside each runner's container.
@@ -52,7 +46,6 @@ let
     homeassistant.local.zila.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ8Eo+WQmet7vufMnTB9MlyQGjtZbv7fKhUqwLlZs7rf
   '';
 
-  guard = import ./runner-guard.nix { inherit lib pkgs; };
   events = {
     ha = [ "push" "pull_request_target" "schedule" "workflow_dispatch" ];
     ha-pr = [ "pull_request_target" ];
@@ -101,7 +94,7 @@ let
     HA_KNOWN_HOSTS = "${knownHosts}";
   };
 
-  # What each runner's jobs get, on argo or in its container.
+  # What each runner's jobs get.
   jobs = {
     ha = {
       user = "ha-tofu";
@@ -127,27 +120,8 @@ let
       };
     };
   };
-  runner = name: {
-    extraPackages = with pkgs; [ openssh gh curl util-linux ];
-    extraEnvironment = environment;
-    inherit (jobs.${name}) serviceOverrides;
-  };
-
-  # On argo: services on the host.
-  hostRunner = name: lib.recursiveUpdate (runner name) {
-    enable = true;
-    name = "${cfg.runnerPrefix}-${name}";
-    url = "https://github.com/${repo}";
-    tokenFile = "${secretsDir}/runner-token";
-    replace = true;
-    extraLabels = [ name ];
-    inherit (jobs.${name}) user;
-    group = "ha-tofu";
-    extraEnvironment.ACTIONS_RUNNER_HOOK_JOB_STARTED = guard name repo events.${name};
-  };
-
-  # In the VM: each in its own container (modules/runner-containers.nix), with
-  # its credentials (/etc/ha-tofu/<runner> as /etc/ha-tofu) and the state.
+  # Each in its own container, with its credentials (/etc/ha-tofu/<runner> as
+  # /etc/ha-tofu) and the state.
   containerRunner = name: {
     inherit repo resolvers;
     events = events.${name};
@@ -165,34 +139,34 @@ let
       isReadOnly = name != "ha";
     };
     allow = [ "ip daddr ${homeAssistantAddress} tcp dport { 22, 443 }" ];
-    runner = runner name;
+    runner = {
+      extraPackages = with pkgs; [ openssh gh curl util-linux ];
+      extraEnvironment = environment;
+      inherit (jobs.${name}) serviceOverrides;
+    };
   };
 in
 {
   imports = [ ./runner-containers.nix ];
 
   options.services.haGitops = {
-    enable = lib.mkEnableOption "the GitHub Actions runners for jzila/home-assistant (on one host at a time)";
-    containers = lib.mkEnableOption "each runner in its own NixOS container (the hermes VM)";
-    runnerPrefix = lib.mkOption {
-      type = lib.types.str;
-      default = config.networking.hostName;
-      description = "Runner names on GitHub: <prefix>-ha and <prefix>-ha-pr.";
-    };
+    enable = lib.mkEnableOption "the GitHub Actions runners for jzila/home-assistant, each in its own container";
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [ {
-  users.groups.ha-tofu = lib.optionalAttrs cfg.containers { gid = haTofuId; };
+  config = lib.mkIf cfg.enable {
+  users.groups.ha-tofu.gid = haTofuId;
   users.users.ha-tofu = {
     isSystemUser = true;
     group = "ha-tofu";
+    uid = haTofuId;
     description = "Home Assistant GitHub runner (apply)";
-  } // lib.optionalAttrs cfg.containers { uid = haTofuId; };
+  };
   users.users.ha-pr = {
     isSystemUser = true;
     group = "ha-tofu"; # reads the state
+    uid = haPrId;
     description = "Home Assistant GitHub runner (PR plans)";
-  } // lib.optionalAttrs cfg.containers { uid = haPrId; };
+  };
 
   systemd.tmpfiles.rules = [
     "d ${secretsDir} 0700 root root -"
@@ -218,14 +192,7 @@ in
       ExecStart = "${lib.getExe driftReport} ${stateDir}/drift/report.md";
     };
   };
-  }
 
-  (lib.mkIf (!cfg.containers) {
-    services.github-runners = lib.genAttrs [ "ha" "ha-pr" ] hostRunner;
-  })
-
-  (lib.mkIf cfg.containers {
-    services.runnerContainers = lib.genAttrs [ "ha" "ha-pr" ] containerRunner;
-  })
-  ]);
+  services.runnerContainers = lib.genAttrs [ "ha" "ha-pr" ] containerRunner;
+  };
 }
