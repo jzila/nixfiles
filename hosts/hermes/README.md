@@ -190,7 +190,6 @@ Pick a quiet moment: no Home Assistant workflow running
 7. **argo**, in `hosts/argo/configuration.nix`:
    ```nix
    services.hermesContainer.enable = false;
-   services.haGitops.enable = false;
    ```
    then `sudo nixos-rebuild switch --flake .#argo`. Then on GitHub, remove the
    offline runners `argo-ha` and `argo-ha-pr` (repo settings → Runners), delete
@@ -221,9 +220,12 @@ any more); use it in the VM's container: `ssh root@hermes…`, then
    `/var/lib/hermes`, `/var/lib/nixos-containers/hermes/var/lib/signal-cli`
    (same paths on argo), and `/var/lib/ha-tofu` (re-owned to argo's
    `ha-tofu`).
-3. Revert the three lines on argo and rebuild; point the ingress back; the
-   runners re-register as `argo-ha*` with a new registration token in argo's
-   `/etc/ha-tofu/runner-token`; argo needs a GitHub App key again.
+3. Revert the line on argo and rebuild; point the ingress back; argo needs a
+   GitHub App key again. The Home Assistant runners have no argo mode any more
+   (they only run in containers): bringing them back on argo means reverting
+   the commit that removed it (`services.haGitops` on argo, as services on the
+   host), then a new registration token in argo's `/etc/ha-tofu/runner-token`;
+   they re-register as `argo-ha*`.
 
 ## The deploy runner
 

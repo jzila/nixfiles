@@ -180,10 +180,7 @@ in
 
     # The Home Assistant runners, each in its own container; they start only
     # once their credentials are in /etc/ha-tofu (README.md, cut-over).
-    services.haGitops = {
-      enable = true;
-      containers = true;
-    };
+    services.haGitops.enable = true;
 
     # ── Administration ────────────────────────────────────────────────────
     # root over ssh with John's YubiKey (FIDO2, touch per login); more keys
