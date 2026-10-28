@@ -2,7 +2,7 @@
 # NixOS containers: hermes (Hermes Agent's gateway, signal-cli, nginx; the
 # same modules/hermes-container.nix as on argo, inner system
 # modules/hermes-service.nix), and ha and ha-pr (the Home Assistant runners,
-# modules/ha-gitops.nix). The VM itself keeps the credentials
+# modules/ha-gitops.nix, on modules/runner-containers.nix). The VM itself keeps the credentials
 # (modules/hermes-credentials.nix), Tailscale and its own deploy. TrueNAS
 # defines the VM (CPUs, memory, the zvol, the NIC); this is the system on its
 # disk. First booted from packages.x86_64-linux.hermes-image, then it deploys
@@ -128,7 +128,7 @@ in
 
     networking.nameservers = cfg.resolvers;
     # The firewall, NAT and the containers' tables (hermes-container.nix,
-    # ha-gitops.nix) as one nftables ruleset, replaced atomically on a switch.
+    # runner-containers.nix) as one nftables ruleset, replaced atomically on a switch.
     networking.nftables.enable = true;
     # Only ssh on the VM itself; the webhook ports are forwarded into the
     # container (hermes-container.nix's nftables table), not served here.
