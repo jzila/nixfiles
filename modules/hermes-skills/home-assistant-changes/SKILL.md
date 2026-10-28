@@ -1,7 +1,7 @@
 ---
 name: home-assistant-changes
 description: Change Home Assistant's configuration through a pull request on jzila/home-assistant.
-version: 1.4.0
+version: 1.4.1
 author: John Zila
 platforms: [linux]
 metadata:
