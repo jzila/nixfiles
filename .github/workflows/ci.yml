@@ -33,7 +33,7 @@ jobs:
         host:
           - venator
           - argo
-          # Hermes's VM; its self-deploy waits for this check on main.
+          # Hermes's VM; its deploy also requires this check on main.
           - hermes
     steps:
       - uses: actions/checkout@v5
@@ -64,3 +64,20 @@ jobs:
 
       - name: Build nix-darwin configuration
         run: nix build .#darwinConfigurations.macbook.system --dry-run
+
+  # Hermes's VM deploys main to itself (hosts/hermes/deploy.nix): this job runs
+  # on the VM's own runner and asks it to, then shows that deploy's log.
+  deploy-hermes:
+    name: Deploy (hermes)
+    needs: [check-flake, build-nixos]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, nixfiles]
+    environment: hermes
+    concurrency:
+      group: deploy-hermes
+      cancel-in-progress: false
+    # The VM's build has 4 hours, then the health check 5 minutes.
+    timeout-minutes: 300
+    steps:
+      - name: Deploy main to the hermes VM
+        run: nixos-deploy-request

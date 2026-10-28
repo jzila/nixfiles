@@ -1,7 +1,8 @@
 # nixos-deploy: switch this system (the hermes VM) to jzila/nixfiles main
-# once CI has built it. One round per run, started by nixos-deploy.timer; see
-# hosts/hermes/deploy.nix. Runs under writeShellApplication (errexit, nounset,
-# pipefail).
+# once CI has built it. One round per run, started by run.sh for a deploy job
+# (a "next round" is the job's re-run, or the next push); see
+# hosts/hermes/deploy.nix. Runs under writeShellApplication (errexit,
+# nounset, pipefail).
 #
 # Everything is overridable from the environment so a dry run (and the tests in
 # test.sh) can run it unprivileged:
