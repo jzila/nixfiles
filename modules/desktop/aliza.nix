@@ -86,7 +86,11 @@
         # still needs the physical key. Add a key (e.g. a backup) with:
         #   pamu2fcfg -n -o pam://nixfiles -i pam://nixfiles
         # and append its output to john's line.
-        authfile = ./u2f_keys;
+        # Interpolated, so the file is its own store path in the system's
+        # closure. A bare path became a string into the flake's source copy,
+        # which nothing kept alive: once garbage-collected, pam_u2f found no
+        # keys and sudo fell back to the password.
+        authfile = "${./u2f_keys}";
       };
       loginLimits = [{
         domain = "*";
