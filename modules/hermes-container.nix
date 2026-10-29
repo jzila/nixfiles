@@ -52,6 +52,11 @@
 #     tailscale0:8646 to a plain-HTTP nginx listener in the container that only
 #     forwards /webhooks/github-pr; github-pr.py treats the post as a hint and
 #     reads the PR from GitHub itself.
+#   - Home Assistant: no access from the container itself (egress rejects the
+#     LAN). Where the host runs the read-only proxy
+#     (modules/hermes-ha-proxy.nix, the hermes VM), haProxyUrl points at it
+#     on the host's end of the veth, a hostPorts entry; Hermes reads through
+#     it with `ha-get` and never sees the token.
 #   - GitHub: Hermes acts as the zila-hermes GitHub App (installed on
 #     jzila/home-assistant and jzila/nixfiles; no workflow permission, can't
 #     bypass the main rulesets). The app's private key stays on the host
@@ -142,6 +147,11 @@ in
       type = lib.types.listOf lib.types.str;
       default = [ "john" ];
       description = "Host users in the hermes group, who share the state through the CLI.";
+    };
+    haProxyUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "The read-only Home Assistant proxy as the container reaches it (modules/hermes-ha-proxy.nix); null for none.";
     };
     hideNixDaemon = lib.mkOption {
       type = lib.types.bool;
@@ -281,6 +291,7 @@ in
     config = {
       imports = [ ./hermes-service.nix ];
       hermes.ollamaHost = cfg.ollamaHost;
+      hermes.haProxyUrl = cfg.haProxyUrl;
       system.stateVersion = "26.05";
       networking.useHostResolvConf = lib.mkForce false;
     };
