@@ -1,7 +1,7 @@
 ---
 name: home-assistant-changes
-description: Change Home Assistant's configuration through a pull request on jzila/home-assistant.
-version: 1.4.1
+description: Read Home Assistant's state through the read-only proxy (ha-get); change anything only through a pull request on jzila/home-assistant.
+version: 1.5.0
 author: John Zila
 platforms: [linux]
 metadata:
@@ -12,10 +12,34 @@ metadata:
 
 # Home Assistant changes
 
-Home Assistant's configuration (automations, scripts, scenes, helpers, areas,
-labels, device/entity settings, `/config` files) changes only through a pull
-request on `jzila/home-assistant`, never through Home Assistant's API or UI.
-Controlling devices and reading states is fine as usual.
+## Reading: `ha-get`, read-only
+
+You can read Home Assistant, nothing more. `ha-get` sends a GET through a
+read-only proxy outside your container, which adds the token (you never have
+one, and can't reach Home Assistant any other way):
+
+```sh
+ha-get /api/states                     # all entities
+ha-get /api/states/sun.sun             # one entity
+ha-get /api/components                 # loaded integrations
+ha-get '/api/history/period/2026-10-29T00:00:00%2B00:00?filter_entity_id=sun.sun'
+ha-get '/api/logbook/2026-10-29T00:00:00%2B00:00?entity=sun.sun'
+ha-get /api/config                     # also /api/, /api/services, /api/events, /api/calendars[/<entity>]
+```
+
+Only those endpoints, GET only. Everything else is refused (403/405) on
+purpose: service calls, POSTs, the WebSocket API, templates, add-ons, auth.
+A 503 means no token is installed yet: tell John. Never try another way
+around it, and never ask for the proxy to be widened (no issue, task or PR
+for that): it stays read-only by design.
+
+## Changing: a pull request
+
+Nothing changes Home Assistant live: not devices, not services, not
+configuration. Its configuration (automations, scripts, scenes, helpers,
+areas, labels, device/entity settings, `/config` files) changes only through a
+pull request on `jzila/home-assistant`, which John approves; anything you'd
+want to do live becomes such a PR, or a suggestion to John.
 
 You don't write the change. Your first and only action now is one
 `delegate_task` call:
