@@ -7,6 +7,7 @@
     # Shared desktop configuration
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
+    ./ollama-models.nix
     ../../modules/hermes-container.nix
   ];
 
@@ -48,20 +49,21 @@
     environmentVariables = {
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_DEBUG = "1";
-      # Slots per model; each reserves its full context up front (~5.6 GiB
-      # per gemma4 slot at 262144). qwen3.6 (qwen35moe) is held to 1 slot by
-      # ollama regardless ("architecture does not currently support parallel
-      # requests"), so opencode's qwen agent runs its subagents on gemma4 (see
-      # home/john/opencode.nix); 6 gemma4 slots leave room for those next to
-      # Hermes and Home Assistant. Measured with both loaded at 262144 context
-      # and 4 gemma4 slots: 73.5 GiB of the 120 GiB the GPU may map (see
-      # boot.kernelParams); 6 slots add ~11 GiB.
-      OLLAMA_NUM_PARALLEL = "6";
-      # Default context for clients that can't set num_ctx (the OpenAI /v1
-      # API, used by Hermes Agent). Keep Home Assistant's context window at
-      # the same value: ollama reloads a model whenever a request needs a
-      # different context size.
-      OLLAMA_CONTEXT_LENGTH = "262144";
+      # One slot per model. ollama has no per-model setting (ollama#4894),
+      # and this is what lets Qwen3.8 and gemma4 stay loaded together (see
+      # ./ollama-models.nix). Hermes and opencode share Qwen's slot; Home
+      # Assistant has gemma4's to itself.
+      OLLAMA_NUM_PARALLEL = "1";
+      OLLAMA_KV_CACHE_TYPE = "q8_0";
+      # Default context for clients that don't set num_ctx (the OpenAI /v1
+      # API). Qwen3.8's own num_ctx (131072) overrides it. Keep Home
+      # Assistant's context window at the same value: ollama reloads a model
+      # whenever a request needs a different context size, and with two
+      # models loaded a reload can evict the other one.
+      OLLAMA_CONTEXT_LENGTH = "65536";
+      # Read Qwen3.8's ~27 GiB per-layer embedding table from disk as needed
+      # instead of loading it into memory.
+      LLAMA_ARG_LAZY_MODE = "on";
       # Ollama passes LLAMA_ARG_* through to its llama-server runners but
       # neither sets nor counts their host-RAM caches (ollama#18264), which at
       # llama.cpp's defaults grew gemma4's runner to ~21 GiB of system RAM:
@@ -73,43 +75,16 @@
       # its slot; recent checkpoints cover the usual rewind to the last turn.
       LLAMA_ARG_CACHE_RAM = "2048";
       LLAMA_ARG_CTX_CHECKPOINTS = "4";
-      # Unload idle models after 10 minutes. A loaded qwen3.6 holds the GPU
-      # at 100% busy and full clock even when idle, which squeezes the CPU's
-      # share of the SoC power budget and lags the desktop. gemma4 is pinned
-      # instead; see ollama-pin-gemma below.
+      # With two ROCm processes resident (one runner per loaded model), the
+      # GPU sits at 100% busy and full clock while idle, ~25 W, until a
+      # kernel fix expected in 7.4 (ROCm/TheRock#7578, #9141). One hardware
+      # queue per process avoids it, with no measured change in speed. Drop
+      # once argo runs 7.4.
+      GPU_MAX_HW_QUEUES = "1";
+      # Unload idle models after 10 minutes; Qwen3.8 and gemma4 are pinned
+      # instead (ollama-pin-models in ./ollama-models.nix). Loading any other
+      # model evicts one of them.
       OLLAMA_KEEP_ALIVE = "10m";
-    };
-    # Pulled on rebuild if missing. qwen3.6 is the general/agent model,
-    # gemma4 serves Home Assistant's Assist.
-    loadModels = [
-      "qwen3.6:35b-a3b"
-      "gemma4:26b-a4b"
-    ];
-  };
-
-  # Keep gemma4 loaded for Home Assistant and Hermes. Ollama has no
-  # per-model keep-alive, and every request resets a model's expiry to the
-  # request's keep_alive or OLLAMA_KEEP_ALIVE (Hermes' /v1 requests can't set
-  # one), so re-pin it more often than the 10-minute default expires.
-  systemd.services.ollama-pin-gemma = {
-    description = "Keep gemma4 loaded in ollama";
-    after = [ "ollama.service" "ollama-model-loader.service" ];
-    requires = [ "ollama.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      DynamicUser = true;
-    };
-    script = ''
-      ${pkgs.curl}/bin/curl -fsS --retry 10 --retry-connrefused --retry-delay 5 \
-        http://127.0.0.1:11434/api/generate \
-        -d '{"model":"gemma4:26b-a4b","keep_alive":-1}' >/dev/null
-    '';
-  };
-  systemd.timers.ollama-pin-gemma = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "1min";
-      OnUnitActiveSec = "5min";
     };
   };
 
