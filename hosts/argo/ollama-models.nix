@@ -23,7 +23,7 @@
 # order and pins both. A request for a different context size reloads a
 # model, which can evict the other the same way, so clients must leave the
 # context size to ollama (see configuration.nix).
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, localPkgs, ... }:
 let
   qwen = "qwen3.8-flash-next:iq4xs";
   qwenBase = "qwen3.8-flash-next:iq4xs-gguf";
@@ -65,8 +65,51 @@ let
     FROM ${qwenBase}
     PARAMETER num_ctx 131072
   '';
+
+  # llama-server's prompt cache keeps the state of conversations that lost
+  # their slot, so taking turns on Qwen's one slot costs ~0.3 s instead of
+  # re-reading the whole prompt (~27 s at 13K tokens). Each cached
+  # conversation takes ~0.6 GiB with Qwen's recurrent-state checkpoints.
+  # gemma4 only serves Home Assistant, whose prompt changes with entity
+  # states; there the cache would just fill with stale copies. Ollama passes
+  # the same environment to every runner (LLAMA_ARG_CACHE_RAM is 0 in
+  # configuration.nix), so this wrapper raises it for Qwen's model file,
+  # found through Qwen's manifest.
+  promptCacheMiB = 4096;
+  models = config.services.ollama.models;
+  qwenManifestPath = lib.replaceStrings [ ":" ] [ "/" ] qwen;
+  llamaServerWrapper = pkgs.writeShellScript "llama-server" ''
+    model=
+    prev=
+    for arg in "$@"; do
+      [ "$prev" = --model ] && model=$arg
+      prev=$arg
+    done
+    for manifest in \
+      ${models}/manifests-v2/ollama.com/library/${qwenManifestPath} \
+      ${models}/manifests/registry.ollama.ai/library/${qwenManifestPath}; do
+      [ -r "$manifest" ] || continue
+      blob=$(${pkgs.jq}/bin/jq -r \
+        '.layers[] | select(.mediaType == "application/vnd.ollama.image.model") | .digest' \
+        "$manifest" | ${pkgs.coreutils}/bin/tr : -)
+      if [ -n "$blob" ] && [ "''${model##*/}" = "$blob" ]; then
+        export LLAMA_ARG_CACHE_RAM=${toString promptCacheMiB}
+      fi
+      break
+    done
+    exec -a "$0" "''${0%/*}/.llama-server-unwrapped" "$@"
+  '';
 in
 {
+  # Ollama finds llama-server next to its own (resolved) executable, so the
+  # wrapper goes into the package itself.
+  services.ollama.package = localPkgs.ollama-rocm-bin.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      mv "$out"/lib/ollama/llama-server "$out"/lib/ollama/.llama-server-unwrapped
+      cp ${llamaServerWrapper} "$out"/lib/ollama/llama-server
+    '';
+  });
+
   services.ollama.loadModels = [ gemma ];
 
   systemd.services.ollama-import-qwen38 = {

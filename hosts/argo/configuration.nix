@@ -71,9 +71,10 @@
       #     that lost their slot (default 8192 MiB, shared by all slots);
       #   - context checkpoints: 200 MiB snapshots of gemma4's sliding-window
       #     layers that let a slot rewind (default 32 per slot).
-      # Hermes and Home Assistant each hold one conversation, which stays in
-      # its slot; recent checkpoints cover the usual rewind to the last turn.
-      LLAMA_ARG_CACHE_RAM = "2048";
+      # Off by default; ./ollama-models.nix turns the prompt cache back on
+      # for Qwen3.8 alone. Recent checkpoints cover the usual rewind to the
+      # last turn.
+      LLAMA_ARG_CACHE_RAM = "0";
       LLAMA_ARG_CTX_CHECKPOINTS = "4";
       # With two ROCm processes resident (one runner per loaded model), the
       # GPU sits at 100% busy and full clock while idle, ~25 W, until a
