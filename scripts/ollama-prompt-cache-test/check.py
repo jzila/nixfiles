@@ -10,10 +10,12 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 
 HOST = "http://" + os.environ["OLLAMA_HOST"]
-# ~10K tokens each; the conversations differ from the first token.
+# About 14.5K tokens for A and 23.6K for B on Qwen3; the conversations
+# differ from the first token.
 DOC = "\n".join(f"Line {i}: the quick brown fox jumps over the lazy dog {i * 7919 % 10007}." for i in range(700))
 
 failures = []
@@ -53,23 +55,27 @@ def turns(model, options=None):
     r = chat(model, a, options)
     a += [r["message"], {"role": "user", "content": "And the last line?"}]
     chat(model, b, options)
+    start = time.monotonic()
     r2 = chat(model, a, options)
-    return r2["prompt_eval_count"], r2.get("prompt_eval_cached_count", 0), r2["prompt_eval_duration"] / 1e9
+    # Wall time too: prompt_eval_duration leaves out work the runner does
+    # before it starts on the prompt, like evicting cache entries.
+    return (r2["prompt_eval_count"], r2.get("prompt_eval_cached_count", 0),
+            r2["prompt_eval_duration"] / 1e9, time.monotonic() - start)
 
 
 for runner, flag in (("gguf", "--cache-ram"), ("mlx", "--prompt-cache")):
     print(f"-- {runner} ({flag})")
     for budget in ("unset", "0", "2048"):
         model = f"pc-{runner}-{budget}"
-        total, cached, secs = turns(model)
+        total, cached, secs, wall = turns(model)
         f = runner_flag()
         want = ("none", None) if budget == "unset" else (flag, budget)
         check(f"{model} flag", f == want, f"started with {f}, want {want}")
         frac = cached / total if total else 0
         if budget == "0":
-            check(f"{model} cache", frac < 0.5, f"A's 2nd turn reused {cached}/{total} tokens ({secs:.2f}s); want little")
+            check(f"{model} cache", frac < 0.5, f"A's 2nd turn reused {cached}/{total} tokens (prompt {secs:.2f}s, request {wall:.2f}s); want little")
         else:
-            check(f"{model} cache", frac > 0.9, f"A's 2nd turn reused {cached}/{total} tokens ({secs:.2f}s); want nearly all")
+            check(f"{model} cache", frac > 0.9, f"A's 2nd turn reused {cached}/{total} tokens (prompt {secs:.2f}s, request {wall:.2f}s); want nearly all")
     # A request with a different prompt_cache must restart the runner with it.
     model = f"pc-{runner}-0"
     chat(model, [{"role": "user", "content": "hi"}], {"prompt_cache": 1024})
