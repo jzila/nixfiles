@@ -194,8 +194,10 @@ in
         model = {
           provider = "custom";
           base_url = "http://${hostAddress}:11434/v1";
-          default = "gemma4:26b-a4b";
-          context_length = 262144;
+          # Qwen3.8 on argo; its context matches the num_ctx argo's ollama
+          # gives it (hosts/argo/ollama-models.nix).
+          default = "qwen3.8-flash-next:iq4xs";
+          context_length = 131072;
         };
         # "." resolves against the process's working directory: the
         # gateway's workingDirectory above, and the launch directory for
