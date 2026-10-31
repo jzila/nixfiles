@@ -47,30 +47,35 @@ git -C src log -1 --format='   %h %s'
 echo "== Build"
 # The branch pins a newer Go than nixpkgs has; let Go fetch that toolchain.
 export GOTOOLCHAIN=auto
+# MLX's Metal sources take a lot of memory each to compile; at Ninja's
+# default of cores + 2 jobs a 24 GB macbook ran out.
+export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-6}
 if ! { cmake -S src -B src/build -G Ninja && cmake --build src/build; } >build.log 2>&1; then
   tail -40 build.log
   echo "Build failed; full log: $work/build.log" >&2
   exit 1
 fi
 
+# ollama finds its MLX library under ./build, so run it from the checkout.
+cd src
 echo "== Server (127.0.0.1:11435, log: $work/serve.log)"
 export OLLAMA_HOST=127.0.0.1:11435 OLLAMA_MODELS=$work/models
 # One model at a time, so each variant gets a fresh runner.
 OLLAMA_DEBUG=1 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_KEEP_ALIVE=10m \
-  src/ollama serve >serve.log 2>&1 &
+  ./ollama serve >"$work/serve.log" 2>&1 &
 server=$!
 trap 'kill $server 2>/dev/null; wait $server 2>/dev/null' EXIT
 until curl -fs "http://$OLLAMA_HOST/api/version" >/dev/null; do
-  kill -0 $server 2>/dev/null || { tail -20 serve.log; exit 1; }
+  kill -0 $server 2>/dev/null || { tail -20 "$work/serve.log"; exit 1; }
   sleep 1
 done
 
 echo "== Models"
-src/ollama pull "$gguf" >/dev/null
-mkdir -p hf
+./ollama pull "$gguf" >/dev/null
+mkdir -p "$work/hf"
 for f in config.json generation_config.json merges.txt model.safetensors \
   tokenizer.json tokenizer_config.json vocab.json; do
-  [ -s "hf/$f" ] || curl -fsSL -o "hf/$f" "https://huggingface.co/$hf/resolve/$hfRev/$f"
+  [ -s "$work/hf/$f" ] || curl -fsSL -o "$work/hf/$f" "https://huggingface.co/$hf/resolve/$hfRev/$f"
 done
 
 # Variants per runner: prompt_cache unset (today's default), 0 and 2048.
@@ -82,8 +87,8 @@ for runner in gguf mlx; do
       echo "FROM $from"
       echo "PARAMETER num_ctx 32768"
       [ $c = unset ] || echo "PARAMETER prompt_cache $c"
-    } >Modelfile
-    src/ollama create "pc-$runner-$c" -f Modelfile >/dev/null
+    } >"$work/Modelfile"
+    ./ollama create "pc-$runner-$c" -f "$work/Modelfile" >/dev/null
   done
 done
 
