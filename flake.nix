@@ -211,6 +211,21 @@
             hermes-image = self.nixosConfigurations.hermes.config.system.build.image;
           });
 
+      # Builds jzila/ollama's per-model prompt_cache branch on the macbook and
+      # checks it on both runners: nix run .#ollama-prompt-cache-test
+      # (scripts/ollama-prompt-cache-test/run.sh). Delete once that lands
+      # upstream or is dropped.
+      apps.aarch64-darwin.ollama-prompt-cache-test =
+        let pkgs = mkPkgsUnstable "aarch64-darwin";
+        in {
+          type = "app";
+          program = lib.getExe (pkgs.writeShellApplication {
+            name = "ollama-prompt-cache-test";
+            runtimeInputs = with pkgs; [ bash go cmake ninja git python3 curl ];
+            text = ''bash ${./scripts/ollama-prompt-cache-test}/run.sh "$@"'';
+          });
+        };
+
       # The hermes VM's deploy and health-check logic, against stubs
       # (hosts/hermes/deploy/test.sh).
       checks.x86_64-linux.hermes-deploy =
