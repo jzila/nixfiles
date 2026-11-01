@@ -1,7 +1,7 @@
 ---
 name: home-assistant-changes
 description: Read Home Assistant's state through the read-only proxy (ha-get); change anything only through a pull request on jzila/home-assistant.
-version: 1.5.0
+version: 1.6.0
 author: John Zila
 platforms: [linux]
 metadata:

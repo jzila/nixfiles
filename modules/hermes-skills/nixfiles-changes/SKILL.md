@@ -1,7 +1,7 @@
 ---
 name: nixfiles-changes
 description: Change argo, your own setup or John's other machines through a pull request on jzila/nixfiles.
-version: 1.0.0
+version: 1.1.0
 author: John Zila
 platforms: [linux]
 metadata:
