@@ -159,6 +159,18 @@ To rotate, create a new token, install it the same way, then delete the old
 one in Home Assistant. To cut Hermes off, delete the token there (or the
 file here, then `systemctl start hermes-egress-token`).
 
+## Dashboard
+
+Hermes's dashboard (its web UI, Chat included) is at
+`https://hermes.local.zila.dev` from argo and the tailnet, behind nginx on
+the VM; port 80 redirects there. It asks for its own login.
+
+1. In the VM, set the login (hidden prompt, 16+ characters; signs out
+   earlier sessions): `hermes-dashboard-password`.
+2. For the tailnet: allow your devices `tag:hermes:443` and `tag:hermes:80`
+   in the tailnet policy, and make `hermes.local.zila.dev` resolve to the
+   VM's tailnet address there (the dashboard only accepts that name).
+
 ## Cut-over (manual; one Hermes, one set of runners, at all times)
 
 Pick a quiet moment: no Home Assistant workflow running

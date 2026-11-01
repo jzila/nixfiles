@@ -15,7 +15,9 @@
 #     the LAN. Tailscale as its own node (tag:hermes) for the PR events.
 #   - Inbound: ssh to the VM (keys below). The mutual-TLS webhook (8645, from
 #     Home Assistant's address only) and the PR events (8646, from the tailnet
-#     only) are DNATed into the hermes container, as on argo.
+#     only) are DNATed into the hermes container, as on argo. Hermes's
+#     dashboard (HTTPS, from argo and the tailnet) goes through nginx
+#     here (modules/hermes-dashboard-proxy.nix).
 #   - Hermes's egress is the container's (hermes-container.nix): argo's
 #     ollama (allowedLanTargets), DNS to Pi-hole and the router, the internet;
 #     nothing else on private or local ranges. On the VM itself only the
@@ -29,7 +31,8 @@
 #     container, as on argo), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
 #     only), /etc/hermes/ha-token (the egress gateway's Home Assistant
-#     token, never in the container), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
+#     token, never in the container), /etc/hermes-dashboard (the
+#     dashboard's login), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
 #     and /etc/nixfiles-runner (the runners'). Each service waits for its
 #     secret.
 { config, lib, pkgs, modulesPath, ... }:
@@ -45,6 +48,7 @@ in
     "${modulesPath}/profiles/qemu-guest.nix"
     ../../modules/hermes-container.nix
     ../../modules/hermes-egress.nix
+    ../../modules/hermes-dashboard-proxy.nix
     ../../modules/ha-gitops.nix
     ./deploy.nix
   ];
@@ -157,6 +161,15 @@ in
       inherit (cfg) resolvers homeAssistantAddress;
       stateUsers = [ ];
       hideNixDaemon = true;
+      dashboard = {
+        enable = true;
+        publicUrl = "https://hermes.local.zila.dev";
+      };
+    };
+    services.hermesDashboardProxy = {
+      enable = true;
+      upstream = "http://${config.services.hermesContainer.localAddress}:9119";
+      allowedAddresses = [ cfg.ollamaAddress ];
     };
     services.hermesEgress = {
       enable = true;

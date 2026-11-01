@@ -57,6 +57,9 @@
 #     (modules/hermes-egress.nix, the hermes VM), haProxyUrl points at it
 #     on the host's end of the veth, a hostPorts entry; Hermes uses it with
 #     `ha-get` and `ha-call` and never sees the token.
+#   - Dashboard (dashboard.enable): see hermes-service.nix. Its login is in
+#     /etc/hermes-dashboard on the host (root-only), set by
+#     `hermes-dashboard-password`.
 #   - GitHub: Hermes acts as the zila-hermes GitHub App (installed on
 #     jzila/home-assistant and jzila/nixfiles; no workflow permission, can't
 #     bypass the main rulesets). The app's private key stays on the host
@@ -82,6 +85,25 @@ let
   githubTokenDir = "/run/hermes-github";
 
   cfg = config.services.hermesContainer;
+
+  dashboardDir = "/etc/hermes-dashboard";
+  dashboardPassword = pkgs.writeShellApplication {
+    name = "hermes-dashboard-password";
+    runtimeInputs = [ pkgs.coreutils pkgs.nixos-container ];
+    text = ''
+      user=''${1:-john}
+      read -rsp "Dashboard password for $user: " pw; echo
+      read -rsp 'Again: ' again; echo
+      [ "$pw" = "$again" ] && [ ''${#pw} -ge 16 ] || { echo "no match, or under 16 characters" >&2; exit 1; }
+      hash=$(printf '%s' "$pw" | ${config.containers.hermes.config.services.hermes-agent.package.hermesVenv}/bin/python3 -I -c \
+        'import sys; from plugins.dashboard_auth.basic import hash_password; print(hash_password(sys.stdin.read()))')
+      umask 077
+      # Single quotes: systemd reads the values literally.
+      printf "HERMES_DASHBOARD_BASIC_AUTH_%s='%s'\n" USERNAME "$user" PASSWORD_HASH "$hash" \
+        SECRET "$(head -c 32 /dev/urandom | base64 -w0)" > ${dashboardDir}/credentials.env
+      nixos-container run hermes -- systemctl restart hermes-backend
+    '';
+  };
 
   # Firewall lines from the options; empty lists add nothing.
   hostPortRules = lib.optionalString (cfg.hostPorts != [ ]) ''
@@ -153,6 +175,10 @@ in
       default = null;
       description = "The Home Assistant egress gateway as the container reaches it (modules/hermes-egress.nix); null for none.";
     };
+    dashboard = {
+      enable = lib.mkEnableOption "Hermes's dashboard (see the header)";
+      publicUrl = lib.mkOption { type = lib.types.str; };
+    };
     hideNixDaemon = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -183,7 +209,9 @@ in
     "d ${tlsDir} 0750 root ${nginxGid} -"
     "z ${tlsDir}/server.crt 0640 root ${nginxGid} -"
     "z ${tlsDir}/server.key 0640 root ${nginxGid} -"
-  ];
+  ] ++ lib.optional cfg.dashboard.enable "d ${dashboardDir} 0700 root root -";
+
+  environment.systemPackages = lib.optional cfg.dashboard.enable dashboardPassword;
 
   # Token minting and certificate renewal (modules/hermes-credentials.nix).
   hermes.credentials = {
@@ -278,6 +306,12 @@ in
       };
       # Access grants go here, one per folder, e.g.:
       #   "/grants/notes" = { hostPath = "/home/john/notes"; isReadOnly = true; };
+    } // lib.optionalAttrs cfg.dashboard.enable {
+      # The directory, so a new file shows without restarting the container.
+      "/run/host-secrets/hermes-dashboard" = {
+        hostPath = dashboardDir;
+        isReadOnly = true;
+      };
     } // lib.optionalAttrs cfg.hideNixDaemon {
       # nspawn binds the host's daemon socket into every container; cover it.
       "/nix/var/nix/daemon-socket/socket" = {
@@ -292,6 +326,11 @@ in
       imports = [ ./hermes-service.nix ];
       hermes.ollamaHost = cfg.ollamaHost;
       hermes.haProxyUrl = cfg.haProxyUrl;
+      hermes.dashboard = {
+        inherit (cfg.dashboard) enable publicUrl;
+        address = localAddress;
+        proxy = hostAddress;
+      };
       system.stateVersion = "26.05";
       networking.useHostResolvConf = lib.mkForce false;
     };
