@@ -230,6 +230,11 @@
           PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -m unittest test_ha_log && touch $out
         '';
 
+      # nix build .#checks.x86_64-linux.hermes-ha-proxy (Hermes's read-only
+      # Home Assistant proxy, in a VM)
+      checks.x86_64-linux.hermes-ha-proxy =
+        import ./modules/hermes-ha-proxy-test.nix { pkgs = mkPkgs "x86_64-linux"; };
+
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
         venator = mkSystem {

@@ -8,8 +8,9 @@
 #   /run/host-secrets/hermes        gateway.env alone (root-only)
 #   /run/host-secrets/hermes-tls    the webhook server certificate (nginx's group)
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
-# plus Hermes's state at /var/lib/hermes, and where ollama is in
-# hermes.ollamaHost.
+# plus Hermes's state at /var/lib/hermes, where ollama is in
+# hermes.ollamaHost, and the read-only Home Assistant proxy (if the host runs
+# one, modules/hermes-ha-proxy.nix) in hermes.haProxyUrl, for `ha-get`.
 { config, lib, pkgs, hermes-agent, ... }:
 let
   secretsDir = "/run/host-secrets/hermes";
@@ -31,6 +32,17 @@ let
   # (modules/hermes-credentials.nix).
   ghApp = pkgs.writeShellScriptBin "gh" ''
     GH_TOKEN=$(cat ${githubTokenDir}/token) exec ${lib.getExe pkgs.gh} "$@"
+  '';
+
+  # Reads Home Assistant through the host's read-only proxy, which adds the
+  # token: `ha-get /api/states/sun.sun`. Refusals and errors come back with
+  # the proxy's or Home Assistant's text.
+  haGet = pkgs.writeShellScriptBin "ha-get" ''
+    if [ $# -ne 1 ] || [ "''${1#/}" = "$1" ]; then
+      echo "usage: ha-get /api/<read endpoint>[?query]  (GET only, through the read-only proxy)" >&2
+      exit 2
+    fi
+    exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 "${toString config.hermes.haProxyUrl}$1"
   '';
 
   githubBotName = "zila-hermes[bot]";
@@ -63,6 +75,11 @@ in
   options.hermes.ollamaHost = lib.mkOption {
     type = lib.types.str;
     description = "Where ollama listens (no authentication): the host, or argo over the LAN.";
+  };
+  options.hermes.haProxyUrl = lib.mkOption {
+    type = lib.types.nullOr lib.types.str;
+    default = null;
+    description = "The host's read-only Home Assistant proxy, for ha-get; null for none.";
   };
 
   config = {
@@ -171,7 +188,7 @@ in
         ghApp
         # search_files refuses broad searches without it.
         pkgs.ripgrep
-      ];
+      ] ++ lib.optional (config.hermes.haProxyUrl != null) haGet;
       # Skills this repo maintains, installed into $HERMES_HOME/skills.
       hermesHomeFiles = {
         "skills/devops/home-assistant-changes/SKILL.md" =
@@ -284,7 +301,7 @@ in
               deliver = "signal";
               # The log text is untrusted, but it reaches the prompt only
               # sanitised and marked as data, and triage needs more than the
-              # web-only default: the terminal (git, reading HA's states),
+              # web-only default: the terminal (git, ha-get for HA's states),
               # delegate_task for a fix John asks for, and the kanban task.
               toolsets = [
                 "hermes-signal"
