@@ -34,6 +34,7 @@ class DeviceTest(unittest.TestCase):
         calls, out = self.run_payload([], device="Rooftop speaker")
         create = calls[1]
         self.assertEqual(create[1], "HA log: can't reach Rooftop speaker")
+        self.assertEqual(create[create.index("--priority") + 1], "-1")
         self.assertIn("unreachable for 30+ minutes", create[3])
         self.assertIn("unreachable for 30+ minutes", json.loads(out)["prompt"])
 
@@ -49,6 +50,7 @@ class DeviceTest(unittest.TestCase):
     def test_without_device_unchanged(self):
         calls, _ = self.run_payload([])
         self.assertEqual(calls[1][1], "HA log: pychromecast.socket_client: Failed to connect")
+        self.assertEqual(calls[1][calls[1].index("--priority") + 1], "-1")
 
 
 if __name__ == "__main__":

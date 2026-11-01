@@ -21,7 +21,7 @@ silently. Errors saying a device can't be reached come from
 automation.hermes_ha_unreachable instead, only once the device has been
 unreachable for 30 minutes, with "device": its name; those are one task per
 device, whichever integration logged them. Logs don't clear, so these tasks are never completed here; Hermes
-completes the ones it finds transient.
+completes the ones it finds transient. Filed at priority -1, off kanban_list's default.
 
 The payload is untrusted input; it only ever becomes task titles and bodies,
 passed as argv (never through a shell), and the prompt marks it as data.
@@ -132,7 +132,7 @@ def main():
             return
 
         task_id = json.loads(kanban("create", title, "--body", body(1, first), "--tenant", TENANT,
-                                    "--created-by", "home-assistant", "--json"))["id"]
+                                    "--created-by", "home-assistant", "--priority", "-1", "--json"))["id"]
 
         state = json.loads(state_path.read_text()) if state_path.exists() else {}
         now = time.time()

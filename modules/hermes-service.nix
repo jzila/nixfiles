@@ -78,6 +78,7 @@ in
 {
   imports = [
     hermes-agent.nixosModules.default
+    ./hermes-kanban.nix
     ./signal-cli.nix
   ];
 
