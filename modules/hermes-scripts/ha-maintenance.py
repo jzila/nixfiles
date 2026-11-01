@@ -12,7 +12,7 @@ attention:
 
 The list is reconciled against the board, without the agent: one open task per
 item on tenant "hass" (created if missing, its body refreshed if the issues
-changed), and tasks for devices no longer listed are completed. Prints
+changed), and tasks for devices no longer listed are completed and archived. Prints
 [SILENT] so Hermes drops the webhook instead of starting an agent turn.
 
 The payload is untrusted input; it only ever becomes task titles and bodies,
@@ -82,7 +82,7 @@ def main():
             lines.append(f"- expires: {clean(dev['expires'], 40)}")
         if dev.get("error"):
             lines.append(f"- error: {clean(dev['error'], 300)}")
-        lines.append("Completed automatically once Home Assistant stops reporting it.")
+        lines.append("Completed and archived automatically once Home Assistant stops reporting it.")
         wanted[prefix + name] = "\n".join(lines)
 
     tasks = json.loads(kanban("list", "--tenant", TENANT, "--json").strip() or "[]")
@@ -102,6 +102,7 @@ def main():
     for title, task in open_tasks.items():
         if title not in wanted:
             kanban("complete", task["id"], "--result", "Home Assistant no longer reports this device.")
+            kanban("archive", task["id"])
 
     print("[SILENT]")
 
