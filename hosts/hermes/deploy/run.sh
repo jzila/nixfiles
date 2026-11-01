@@ -19,6 +19,9 @@ containers=${NIXOS_DEPLOY_CONTAINERS:-/etc/nixos-containers}
 
 token=$(cat "$dir/request/next" 2>/dev/null || true)
 rm -f "$dir/request/next"
+# A job's re-run retries a commit that failed.
+attempt=${token##*.}
+if [[ $attempt =~ ^[0-9]+$ ]] && [ "$attempt" -gt 1 ]; then rm -f "$state/attempt"; fi
 echo "request $token" >"$dir/result/log"
 rc=0
 nixos-deploy 2>&1 | tee -a "$dir/result/log" || rc=$?

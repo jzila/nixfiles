@@ -72,7 +72,7 @@ report() {
 fail() {
   echo "$main $build_tries" >"$state/attempt"
   report "Failed to deploy $main to $host at $(date -Is): $1" "" "${@:2}" "" \
-    "Not retried until main moves. Logs: journalctl -u nixos-deploy -u nixos-deploy-switch -u nixos-deploy-rollback"
+    "Not retried until main moves or the job is re-run. Logs: journalctl -u nixos-deploy -u nixos-deploy-switch -u nixos-deploy-rollback"
   exit 1
 }
 

@@ -34,6 +34,8 @@
         interface-name = "enp191s0";
         autoconnect = true;
         autoconnect-priority = 100;
+        # 0 = forever: NM once gave up after a link flap.
+        autoconnect-retries = 0;
       };
       ipv4.method = "auto";
       ipv6 = {
