@@ -1,6 +1,3 @@
-# nix build .#checks.x86_64-linux.hermes-ha-proxy: the read-only Home
-# Assistant proxy (hermes-ha-proxy.nix) in a VM, in front of a stub that
-# answers every request with the method, URI and Authorization it received.
 { pkgs }:
 let
   stub = pkgs.writeText "ha-stub.py" ''
@@ -8,6 +5,7 @@ let
 
     class Echo(BaseHTTPRequestHandler):
         def answer(self):
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
             body = f"{self.command} {self.path} auth={self.headers.get('Authorization')}\n".encode()
             self.send_response(200)
             self.send_header("Content-Length", str(len(body)))
@@ -19,10 +17,10 @@ let
   '';
 in
 pkgs.testers.runNixOSTest {
-  name = "hermes-ha-proxy";
+  name = "hermes-egress";
   nodes.machine = {
-    imports = [ ./hermes-ha-proxy.nix ];
-    services.hermesHaProxy = {
+    imports = [ ./hermes-egress.nix ];
+    services.hermesEgress = {
       enable = true;
       clientAddress = "127.0.0.1";
       upstream = "http://127.0.0.1:8080";
@@ -41,15 +39,15 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("nginx.service")
     machine.wait_for_open_port(8080)
 
-    with subtest("no token: nginx runs, the proxy answers 503"):
+    with subtest("no token: nginx runs, the gateway answers 503"):
         out = get("/api/states")
-        assert out.startswith("Home Assistant read proxy: no token") and out.endswith("503"), out
+        assert out.startswith("Home Assistant egress gateway: no token") and out.endswith("503"), out
 
     machine.succeed("mkdir -m 0700 /etc/hermes && install -m 0600 /dev/stdin /etc/hermes/ha-token <<< tok.en-1_X")
-    machine.succeed("systemctl start hermes-ha-proxy-token")
+    machine.succeed("systemctl start hermes-egress-token")
     # The reload is queued, not waited for.
     machine.wait_until_succeeds("curl -sf http://127.0.0.1:8647/api/")
-    machine.succeed("[ $(stat -c %a:%G /run/hermes-ha-proxy/token.conf) = 640:nginx ]")
+    machine.succeed("[ $(stat -c %a:%G /run/hermes-egress/token.conf) = 640:nginx ]")
 
     with subtest("reads pass, with the token"):
         for path in ["/api/states", "/api/history/period/2026-10-29T00:00:00%2B00:00?filter_entity_id=sun.sun"]:
@@ -60,11 +58,23 @@ pkgs.testers.runNixOSTest {
         out = get("/api/states/sun.sun", "-H 'Authorization: Bearer evil'")
         assert out == "GET /api/states/sun.sun auth=Bearer tok.en-1_X\n200", out
 
-    with subtest("refused: other methods, upgrades, other paths"):
+    todo = "/api/services/todo/add_item"
+    with subtest("approved services pass"):
+        for path in [todo, "/api/services/todo/get_items?return_response"]:
+            out = get(path, "-X POST -d '{}'")
+            assert out == f"POST {path} auth=Bearer tok.en-1_X\n200", out
+
+    with subtest("refused: other methods, services and paths, upgrades"):
         for path, args, code in [
-            ("/api/services/light/turn_on", "-X POST", "405"),
+            ("/api/states", "-X PUT", "403"),
+            ("/api/services/light/turn_on", "-X POST", "403"),
             # A read path, but POST sets the state.
-            ("/api/states/sun.sun", "-X POST -d '{\"state\": \"x\"}'", "405"),
+            ("/api/states/sun.sun", "-X POST -d '{\"state\": \"x\"}'", "403"),
+            (todo, "", "403"),
+            (f"{todo}?x", "-X POST", "403"),
+            ("/api/services/todo/../light/turn_on", "-X POST", "403"),
+            ("/api/services/todo%2F..%2Flight/turn_on", "-X POST", "403"),
+            (todo, "-X POST -H 'Connection: Upgrade' -H 'Upgrade: websocket'", "403"),
             ("/api/states", "-H 'Connection: Upgrade' -H 'Upgrade: websocket'", "403"),
             ("/api/websocket", "", "403"),
             ("/api/hassio/addons", "", "403"),
@@ -75,7 +85,11 @@ pkgs.testers.runNixOSTest {
             ("/api/states/a.b%2F..%2F..%2Fhassio", "", "403"),
         ]:
             out = get(path, args)
-            assert "read-only by design" in out and out.endswith(code), f"{args} {path}: {out}"
+            assert out.startswith("Refused") and out.endswith(code), f"{args} {path}: {out}"
+
+    with subtest("refused: bodies over 16k"):
+        out = get(todo, "-X POST --data-binary @${pkgs.writeText "big" (pkgs.lib.strings.replicate 20000 "a")}")
+        assert out.endswith("413"), out
 
     with subtest("refused: any client but the container"):
         ip = machine.succeed("ip -4 -o addr show eth1 | awk '{print $4}' | cut -d/ -f1").strip()

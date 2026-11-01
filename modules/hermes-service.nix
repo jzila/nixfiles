@@ -9,8 +9,8 @@
 #   /run/host-secrets/hermes-tls    the webhook server certificate (nginx's group)
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
 # plus Hermes's state at /var/lib/hermes, where ollama is in
-# hermes.ollamaHost, and the read-only Home Assistant proxy (if the host runs
-# one, modules/hermes-ha-proxy.nix) in hermes.haProxyUrl, for `ha-get`.
+# hermes.ollamaHost, and the Home Assistant egress gateway (if the host runs
+# one, modules/hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
 { config, lib, pkgs, hermes-agent, ... }:
 let
   secretsDir = "/run/host-secrets/hermes";
@@ -34,15 +34,24 @@ let
     GH_TOKEN=$(cat ${githubTokenDir}/token) exec ${lib.getExe pkgs.gh} "$@"
   '';
 
-  # Reads Home Assistant through the host's read-only proxy, which adds the
-  # token: `ha-get /api/states/sun.sun`. Refusals and errors come back with
-  # the proxy's or Home Assistant's text.
   haGet = pkgs.writeShellScriptBin "ha-get" ''
     if [ $# -ne 1 ] || [ "''${1#/}" = "$1" ]; then
-      echo "usage: ha-get /api/<read endpoint>[?query]  (GET only, through the read-only proxy)" >&2
+      echo "usage: ha-get /api/<read endpoint>[?query]  (GET only)" >&2
       exit 2
     fi
     exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 "${toString config.hermes.haProxyUrl}$1"
+  '';
+
+  haCall = pkgs.writeShellScriptBin "ha-call" ''
+    if ! [[ $1 =~ ^[a-z_]+\.[a-z_]+$ ]]; then
+      echo "usage: ha-call <domain>.<service> [key=value]...  (ha-call todo.add_item entity_id=todo.groceries item=milk)" >&2
+      exit 2
+    fi
+    service=$1; shift
+    [[ $service = *.get_* ]] && query='?return_response'
+    body=$(${lib.getExe pkgs.jq} -nc '$ARGS.positional | map(capture("^(?<key>[a-z_]+)=(?<value>.*)$"; "s") // error("not key=value: \(.)")) | from_entries' --args "$@") || exit 2
+    exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 -H 'Content-Type: application/json' \
+      --data-binary "$body" "${toString config.hermes.haProxyUrl}/api/services/''${service/./\/}$query"
   '';
 
   githubBotName = "zila-hermes[bot]";
@@ -188,7 +197,7 @@ in
         ghApp
         # search_files refuses broad searches without it.
         pkgs.ripgrep
-      ] ++ lib.optional (config.hermes.haProxyUrl != null) haGet;
+      ] ++ lib.optionals (config.hermes.haProxyUrl != null) [ haGet haCall ];
       # Skills this repo maintains, installed into $HERMES_HOME/skills.
       hermesHomeFiles = {
         "skills/devops/home-assistant-changes/SKILL.md" =

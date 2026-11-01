@@ -76,7 +76,7 @@ chat or a command line; copy files (`scp`, or `cat file | ssh … 'install -m 06
 
 | What | Where (in the VM) | Then |
 | --- | --- | --- |
-| A long-lived token of the non-admin Home Assistant user "Hermes (read-only)" | `/etc/hermes/ha-token`, root 0600 | `systemctl start hermes-ha-proxy-token`; see [Home Assistant, read-only](#home-assistant-read-only) |
+| A long-lived token of the non-admin Home Assistant user "Hermes" | `/etc/hermes/ha-token`, root 0600 | `systemctl start hermes-egress-token`; see [Home Assistant](#home-assistant) |
 | A **new** private key for the zila-hermes GitHub App (app settings → Private keys → Generate) | `/etc/hermes/github-app.pem`, root 0600 | `systemctl start hermes-github-token`; `/run/hermes-github/token` appears |
 | A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 (below) | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
 | The webhook server certificate from the step CA, for the VM's name and address (`step ca certificate hermes.local.zila.dev server.crt server.key --provisioner admin --not-after 720h --san hermes.local.zila.dev --san <address>`, on your machine: `step` defaults to the local CA through Home Manager's `~/.step`, or a `step ca bootstrap`) | `/etc/hermes-tls/server.{crt,key}`, `chown root:60` (nginx's gid; the VM has no nginx group of its own), 0640 | nginx in the container starts by itself (`hermes-tls-first`); `hermes-tls-renew` renews it daily within its last 7 days and reloads it |
@@ -124,18 +124,17 @@ it comes from Home Assistant's address, and without its client certificate
 nginx answers 400. From the tailnet (`tag:github-ci` only),
 `POST http://hermes:8646/webhooks/github-pr`.
 
-## Home Assistant, read-only
+## Home Assistant
 
-Hermes reads Home Assistant (states, history, logbook, calendars) through nginx
-on the VM, outside its container (`modules/hermes-ha-proxy.nix`): GET of an
-allowlist of read endpoints only, no WebSocket, from the container's address
-only, on `10.233.2.1:8647` (`ha-get` inside the container). The proxy adds
-the token; the container never sees it and still can't reach Home Assistant
-itself. Every change goes through a PR on jzila/home-assistant. Until a token
-is installed, the proxy answers 503.
+Hermes reaches Home Assistant through the egress gateway, nginx on the VM
+outside its container (`modules/hermes-egress.nix`), on `10.233.2.1:8647`:
+GET of an allowlist of read endpoints (`ha-get`) and POST of the services in
+`services.hermesEgress.services` (`ha-call`), nothing else. The gateway adds
+the token; the container never sees it. Until a token is installed, the
+gateway answers 503.
 
 1. In Home Assistant (Settings → People → Users, advanced mode on): add a
-   user **Hermes (read-only)**, *not* an administrator, "Can only log in from
+   user **Hermes**, *not* an administrator, "Can only log in from
    the local network" on. Log in as it once (a private window), then on its
    profile → Security → Long-lived access tokens, create one ("hermes-proxy")
    and copy it. Log out.
@@ -144,21 +143,21 @@ is installed, the proxy answers 503.
    ```sh
    printf 'Home Assistant token: '; read -rs t; echo
    printf '%s\n' "$t" | install -m 0600 /dev/stdin /etc/hermes/ha-token; unset t
-   systemctl start hermes-ha-proxy-token    # renders it for nginx, reloads nginx
+   systemctl start hermes-egress-token      # renders it for nginx, reloads nginx
    ```
 3. Check, from inside the container (`h` and `curl` as in the checks above;
-   Hermes's own `ha-get` is the first of these):
+   Hermes's `ha-get` is the first of these):
    ```sh
    p=http://10.233.2.1:8647
    h curl -sS $p/api/                                   # {"message":"API running."}
-   h curl -sS -X POST $p/api/services/light/turn_on     # 405, read-only
+   h curl -sS -X POST $p/api/services/light/turn_on     # 403, not approved
    h curl -sS $p/api/websocket                          # 403
    h curl -sS -m5 https://192.168.1.153                 # still refused: no LAN
    ```
 
 To rotate, create a new token, install it the same way, then delete the old
 one in Home Assistant. To cut Hermes off, delete the token there (or the
-file here, then `systemctl start hermes-ha-proxy-token`).
+file here, then `systemctl start hermes-egress-token`).
 
 ## Cut-over (manual; one Hermes, one set of runners, at all times)
 

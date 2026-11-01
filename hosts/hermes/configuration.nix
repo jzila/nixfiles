@@ -19,8 +19,8 @@
 #   - Hermes's egress is the container's (hermes-container.nix): argo's
 #     ollama (allowedLanTargets), DNS to Pi-hole and the router, the internet;
 #     nothing else on private or local ranges. On the VM itself only the
-#     read-only Home Assistant proxy (modules/hermes-ha-proxy.nix), which holds
-#     the token; Home Assistant itself stays out of the container's reach.
+#     egress gateway (modules/hermes-egress.nix), which holds the Home
+#     Assistant token; Home Assistant itself stays out of the container's reach.
 #   - Nix: only root and the runners may use the daemon; the hermes container
 #     doesn't even see its socket. Hermes doesn't build; CI checks its PRs.
 #   - Secrets, provisioned out of band, never in this repo, root-only:
@@ -28,7 +28,7 @@
 #     zila-hermes app; only gateway.env is bound read-only into the
 #     container, as on argo), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
-#     only), /etc/hermes/ha-token (the read-only proxy's Home Assistant
+#     only), /etc/hermes/ha-token (the egress gateway's Home Assistant
 #     token, never in the container), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
 #     and /etc/nixfiles-runner (the runners'). Each service waits for its
 #     secret.
@@ -44,7 +44,7 @@ in
     "${modulesPath}/virtualisation/disk-image.nix"
     "${modulesPath}/profiles/qemu-guest.nix"
     ../../modules/hermes-container.nix
-    ../../modules/hermes-ha-proxy.nix
+    ../../modules/hermes-egress.nix
     ../../modules/ha-gitops.nix
     ./deploy.nix
   ];
@@ -70,7 +70,7 @@ in
     homeAssistantAddress = lib.mkOption {
       type = lib.types.str;
       default = "192.168.1.153";
-      description = "The only address forwarded to the mutual-TLS webhook port, and the read-only proxy's upstream.";
+      description = "The only address forwarded to the mutual-TLS webhook port, and the egress gateway's upstream.";
     };
     resolvers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -150,18 +150,15 @@ in
       localAddress = "10.233.2.2";
       # On the VM itself only the Home Assistant proxy below; argo's ollama
       # over the LAN instead.
-      hostPorts = [ config.services.hermesHaProxy.port ];
-      haProxyUrl = "http://${config.services.hermesContainer.hostAddress}:${toString config.services.hermesHaProxy.port}";
+      hostPorts = [ config.services.hermesEgress.port ];
+      haProxyUrl = "http://${config.services.hermesContainer.hostAddress}:${toString config.services.hermesEgress.port}";
       ollamaHost = cfg.ollamaAddress;
       allowedLanTargets = [ { address = cfg.ollamaAddress; port = 11434; } ];
       inherit (cfg) resolvers homeAssistantAddress;
       stateUsers = [ ];
       hideNixDaemon = true;
     };
-    # Hermes's read-only window on Home Assistant (states, history, logbook):
-    # nginx here, outside the container, with the token in /etc/hermes/ha-token
-    # (README.md). Changes go through PRs on jzila/home-assistant.
-    services.hermesHaProxy = {
+    services.hermesEgress = {
       enable = true;
       clientAddress = config.services.hermesContainer.localAddress;
       upstream = "https://${cfg.homeAssistantAddress}";
