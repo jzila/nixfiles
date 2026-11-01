@@ -160,6 +160,38 @@ in
     # exists (the TLS renewal's reloadNginx).
     systemd.services.nginx.unitConfig.ConditionPathExists = "${tlsDir}/server.crt";
 
+    # A PR with a merge conflict gets no pr-events run for a review or a
+    # review comment (GitHub runs pull_request* workflows on the merge
+    # commit, and there is none), only for a PR comment. So every 5 minutes
+    # post the github-pr hint for each of the bot's open PRs that isn't
+    # mergeable; github-pr.py reports only what's new, [SILENT] otherwise.
+    systemd.services.hermes-pr-poll = {
+      after = [ "hermes-agent.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "hermes";
+        Group = "hermes";
+      };
+      path = [ ghApp pkgs.curl ];
+      script = ''
+        for repo in jzila/home-assistant jzila/nixfiles; do
+          for pr in $(gh pr list -R "$repo" --author app/zila-hermes --state open --json number,mergeable \
+                        --jq '.[] | select(.mergeable != "MERGEABLE") | .number'); do
+            curl -fsS --max-time 60 -H 'Content-Type: application/json' \
+              --data-binary "{\"repo\": \"$repo\", \"pr\": $pr, \"poll\": true}" \
+              http://127.0.0.1:8644/webhooks/github-pr || true
+          done
+        done
+      '';
+    };
+    systemd.timers.hermes-pr-poll = {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "5min";
+        OnUnitActiveSec = "5min";
+      };
+    };
+
     # What defines Hermes's own behaviour changes only through this repo:
     # Hermes owns its state directory, so the webhook route scripts, the
     # skills maintained here, config.yaml (its routes, toolsets and

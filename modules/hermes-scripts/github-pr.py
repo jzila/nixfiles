@@ -5,6 +5,11 @@ the tailnet on a review, review comment or PR comment and posts only
 
     {"repo": "jzila/home-assistant", "pr": 9}
 
+GitHub runs no pull_request* workflow on a PR with a merge conflict (they
+need its merge commit), so reviews and review comments there send nothing;
+a timer (hermes-pr-poll, modules/hermes-service.nix) posts the same hint,
+plus "poll": true, for each of the bot's open PRs that isn't mergeable.
+
 That post is untrusted (any workflow run can send it), so it is only a hint:
 this script reads the PR itself from GitHub as the zila-hermes app and keeps
 what is new since the last run (state in $HERMES_HOME/state/github-pr.json).
@@ -175,9 +180,11 @@ def main():
         # A post with nothing new right after one that had something is
         # most likely curl retrying because Hermes refused that turn (e.g.
         # 503): resend the same prompt once instead of losing the event.
+        # Not for a poll, which no refused turn ever causes.
         last = state.get("_last", {}).get(key)
         resend = None
-        if not new and last and not last.get("resent") and time.time() - last["at"] < RESEND_WINDOW:
+        if (not new and not hint.get("poll") and last and not last.get("resent")
+                and time.time() - last["at"] < RESEND_WINDOW):
             resend = last["prompt"]
             last["resent"] = True
         state[key] = current
