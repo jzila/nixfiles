@@ -10,7 +10,8 @@
    Match the style of the files around the change and change the smallest set
    of files. Never edit `.github/`.
 3. You can't build: CI checks the PR (`Build NixOS` for each host).
-4. Commit, push, `gh pr create`, then watch `gh pr checks` and fix what fails. argo is John's daily driver: a merged
+4. Commit, then `git fetch origin && git rebase origin/main` (main may have
+   moved while you worked), push, `gh pr create`, then watch `gh pr checks` and fix what fails. argo is John's daily driver: a merged
    change reaches it only when John rebuilds argo. The Hermes VM (`hosts/hermes/`
    and the modules it imports, yours included) deploys main to itself as soon as
    CI passes on the merge. Either way the description says what could break and
