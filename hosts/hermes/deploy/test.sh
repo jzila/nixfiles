@@ -147,6 +147,12 @@ expect "a green job" [ "$rc" = 0 ]
 stub nixos-container 'touch "$T/run/request/next"; echo /nix/store/runner-old'
 job "another job waiting" "$B" 0
 expect "no restart under the next job" no called "restart"
+stub nixos-deploy 'echo "attempt=$(cat "$T/state/attempt" 2>/dev/null)"; exit 0'
+job "first run of a failed commit" "" 0; echo "$B 3" >"$T/state/attempt"
+mkdir -p "$T/run/request"; echo "7.1" >"$T/run/request/next"; run run.sh
+expect "the failure stays recorded" grep -q "attempt=$B 3" <<<"$out"
+echo "7.2" >"$T/run/request/next"; run run.sh
+expect "a re-run clears it" grep -qx "attempt=" <<<"$out"
 
 echo "$pass passed, $failures failed"
 [ "$failures" -eq 0 ]
