@@ -218,6 +218,11 @@
           PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -m unittest test_ha_log && touch $out
         '';
 
+      checks.x86_64-linux.hermes-remote = let pkgs = mkPkgs "x86_64-linux"; in
+        (import ./home/john/hermes/remote {
+          inherit pkgs;
+          hermes = inputs.hermes-agent.packages.x86_64-linux.default;
+        }).check;
       checks.x86_64-linux.hermes-egress =
         import ./modules/hermes/hermes-egress-test.nix { pkgs = mkPkgs "x86_64-linux"; };
       checks.x86_64-linux.hermes-dashboard-proxy =
