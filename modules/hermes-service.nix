@@ -11,6 +11,12 @@
 # plus Hermes's state at /var/lib/hermes, where ollama is in
 # hermes.ollamaHost, and the Home Assistant egress gateway (if the host runs
 # one, modules/hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
+#
+# hermes.dashboard: `hermes dashboard`, behind the host's HTTPS front
+# (modules/hermes-dashboard-proxy.nix). It binds the container's address,
+# which turns on its login gate, and runs with the gateway's state and
+# read-only files; the `hermes` user can already drive the gateway's own
+# loopback API, so it grants Hermes nothing new.
 { config, lib, pkgs, hermes-agent, ... }:
 let
   secretsDir = "/run/host-secrets/hermes";
@@ -86,13 +92,20 @@ in
     type = lib.types.str;
     description = "Where ollama listens (no authentication): the host, or argo over the LAN.";
   };
+  options.hermes.dashboard = with lib; {
+    enable = mkEnableOption "Hermes's dashboard";
+    address = mkOption { type = types.str; };
+    publicUrl = mkOption { type = types.str; };
+    # The front's address: the only client, trusted for X-Forwarded-*.
+    proxy = mkOption { type = types.str; };
+  };
   options.hermes.haProxyUrl = lib.mkOption {
     type = lib.types.nullOr lib.types.str;
     default = null;
     description = "The host's read-only Home Assistant proxy, for ha-get; null for none.";
   };
 
-  config = {
+  config = lib.mkMerge [ {
     networking.nameservers = [
       "192.168.1.135"
       "192.168.1.1"
@@ -343,5 +356,31 @@ in
         };
       };
     };
-  };
+  }
+
+  (let
+    d = config.hermes.dashboard;
+    credentials = "/run/host-secrets/hermes-dashboard/credentials.env";
+  in lib.mkIf d.enable {
+    services.hermes-agent.backend = {
+      mode = "dashboard";
+      host = d.address;
+    };
+    services.hermes-agent.settings.dashboard = {
+      public_url = d.publicUrl;
+      trusted_proxies = [ d.proxy ];
+    };
+    systemd.services.hermes-backend = {
+      unitConfig.ConditionFileNotEmpty = credentials;
+      serviceConfig = {
+        EnvironmentFile = credentials;
+        BindReadOnlyPaths = readOnlyState;
+        RestartPreventExitStatus = 78; # another backend owns the host
+      };
+    };
+    networking.firewall.extraCommands = ''
+      iptables -A nixos-fw -p tcp -s ${d.proxy} --dport ${toString config.services.hermes-agent.backend.port} -j nixos-fw-accept
+    '';
+  })
+  ];
 }

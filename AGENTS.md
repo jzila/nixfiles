@@ -59,6 +59,12 @@ The system includes development tools installed via both NixOS packages and Home
 - AppImage support via binfmt registration
 - Hardware-accelerated video drivers
 
+## Writing Code
+
+- Comment only to explain *why*, never *what*; keep each comment as tight as possible.
+- Tests check behavior, not implementation: consolidated, table-driven where it helps, never tautological.
+- Be economical with lines without golfing; write for a world-class reviewer.
+
 ## Development Workflow
 
 Do all branch work in a git worktree under `.agent-worktrees/` (gitignored); keep the main checkout on `main`.

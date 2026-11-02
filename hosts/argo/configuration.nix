@@ -17,6 +17,10 @@
   # run in containers now.
   services.hermesContainer.enable = false;
 
+  # The hermes VM's dashboard uses a step CA certificate; Firefox and Chrome
+  # read this through NSS (p11-kit).
+  security.pki.certificateFiles = [ ../../modules/ssh-ca/root_ca.crt ];
+
   # Networking configuration
   networking = {
     hostName = "argo";

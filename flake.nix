@@ -232,6 +232,8 @@
 
       checks.x86_64-linux.hermes-egress =
         import ./modules/hermes-egress-test.nix { pkgs = mkPkgs "x86_64-linux"; };
+      checks.x86_64-linux.hermes-dashboard-proxy =
+        import ./modules/hermes-dashboard-proxy-test.nix { pkgs = mkPkgs "x86_64-linux"; };
 
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)
