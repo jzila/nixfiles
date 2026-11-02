@@ -19,7 +19,8 @@
 #     dashboard (HTTPS, from argo and the tailnet) goes through nginx
 #     here (modules/hermes-dashboard-proxy.nix).
 #   - Hermes's egress is the container's (hermes-container.nix): argo's
-#     ollama (allowedLanTargets), DNS to Pi-hole and the router, the internet;
+#     ollama and the NAS's HTTPS proxy, for Pocket ID (allowedLanTargets),
+#     DNS to Pi-hole and the router, the internet;
 #     nothing else on private or local ranges. On the VM itself only the
 #     egress gateway (modules/hermes-egress.nix), which holds the Home
 #     Assistant token; Home Assistant itself stays out of the container's reach.
@@ -31,8 +32,7 @@
 #     container, as on argo), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
 #     only), /etc/hermes/ha-token (the egress gateway's Home Assistant
-#     token, never in the container), /etc/hermes-dashboard (the
-#     dashboard's login), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
+#     token, never in the container), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
 #     and /etc/nixfiles-runner (the runners'). Each service waits for its
 #     secret.
 { config, lib, pkgs, modulesPath, ... }:
@@ -75,6 +75,11 @@ in
       type = lib.types.str;
       default = "192.168.1.153";
       description = "The only address forwarded to the mutual-TLS webhook port, and the egress gateway's upstream.";
+    };
+    idAddress = lib.mkOption {
+      type = lib.types.str;
+      default = "192.168.1.135";
+      description = "The NAS, whose proxy serves Pocket ID (id.local.zila.dev), the dashboard's login.";
     };
     resolvers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -157,13 +162,20 @@ in
       hostPorts = [ config.services.hermesEgress.port ];
       haProxyUrl = "http://${config.services.hermesContainer.hostAddress}:${toString config.services.hermesEgress.port}";
       ollamaHost = cfg.ollamaAddress;
-      allowedLanTargets = [ { address = cfg.ollamaAddress; port = 11434; } ];
+      allowedLanTargets = [
+        { address = cfg.ollamaAddress; port = 11434; }
+        { address = cfg.idAddress; port = 443; }
+      ];
       inherit (cfg) resolvers homeAssistantAddress;
       stateUsers = [ ];
       hideNixDaemon = true;
       dashboard = {
         enable = true;
         publicUrl = "https://hermes.local.zila.dev";
+        oidc = {
+          issuer = "https://id.local.zila.dev";
+          clientId = "6ec59cda-0c03-4f7a-87b0-4133d496d578";
+        };
       };
     };
     services.hermesDashboardProxy = {
