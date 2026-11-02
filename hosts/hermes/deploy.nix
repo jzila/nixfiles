@@ -178,6 +178,7 @@ in
     serviceConfig = {
       Type = "oneshot";
       ExecStart = lib.getExe run;
+      ExecStopPost = "${lib.getExe run} stopped";
       StateDirectory = "nixos-deploy";
       StateDirectoryMode = "0755"; # report.md is read by hermes
       # The build has its own timeout (4h); never cut a switch short.

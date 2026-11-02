@@ -134,7 +134,7 @@ job() { # NAME DEPLOYS RC: a job for $B, and the deploy it starts
   (GITHUB_SHA=$B run request.sh; echo "$out" >"$T/job.out"; exit "$rc") &
   local j=$!
   until [ -e "$T/run/request/next" ]; do sleep 0.1; done
-  run run.sh
+  run run.sh; run run.sh stopped
   rc=0; wait "$j" || rc=$?; out=$(cat "$T/job.out")
 }
 job "deployed" "$B" 0
@@ -142,6 +142,10 @@ expect "a green job" [ "$rc" = 0 ]; expect "the deploy's log" grep -q deploying 
 expect "a restart after the job" called "restart container@nixfiles"
 job "deploy failed" "" 1
 expect "a red job" [ "$rc" = 1 ]
+stub nixos-deploy 'echo deploying; kill -9 $PPID'
+job "deploy killed" "" 0
+expect "a red job" [ "$rc" = 1 ]; expect "why" grep -q "stopped before its verdict" <<<"$out"
+stub nixos-deploy 'echo deploying; [ ! -s "$T/deploys" ] || cp "$T/deploys" "$T/state/deployed"; exit "$(cat "$T/deploy-rc")"'
 job "a later commit deployed" "$C" 0
 expect "a green job" [ "$rc" = 0 ]
 stub nixos-container 'touch "$T/run/request/next"; echo /nix/store/runner-old'
