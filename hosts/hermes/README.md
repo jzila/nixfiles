@@ -163,11 +163,12 @@ file here, then `systemctl start hermes-egress-token`).
 
 Hermes's dashboard (its web UI, Chat included) is at
 `https://hermes.local.zila.dev` from argo and the tailnet, behind nginx on
-the VM; port 80 redirects there. It asks for its own login.
+the VM; port 80 redirects there. It signs in with a passkey through Pocket ID
+(`https://id.local.zila.dev`, a TrueNAS app behind the NAS's proxy), as the
+OIDC client `hermes-dashboard` (public, PKCE, callback
+`https://hermes.local.zila.dev/auth/callback`).
 
-1. In the VM, set the login (hidden prompt, 16+ characters; signs out
-   earlier sessions): `hermes-dashboard-password`.
-2. For the tailnet: allow your devices `tag:hermes:443` and `tag:hermes:80`
+1. For the tailnet: allow your devices `tag:hermes:443` and `tag:hermes:80`
    in the tailnet policy, and make `hermes.local.zila.dev` resolve to the
    VM's tailnet address there (the dashboard only accepts that name).
 

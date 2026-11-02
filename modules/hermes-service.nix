@@ -97,6 +97,10 @@ in
     enable = mkEnableOption "Hermes's dashboard";
     address = mkOption { type = types.str; };
     publicUrl = mkOption { type = types.str; };
+    oidc = {
+      issuer = mkOption { type = types.str; };
+      clientId = mkOption { type = types.str; };
+    };
     # The front's address: the only client, trusted for X-Forwarded-*.
     proxy = mkOption { type = types.str; };
   };
@@ -361,22 +365,21 @@ in
     };
   }
 
-  (let
-    d = config.hermes.dashboard;
-    credentials = "/run/host-secrets/hermes-dashboard/credentials.env";
-  in lib.mkIf d.enable {
+  (let d = config.hermes.dashboard; in lib.mkIf d.enable {
     services.hermes-agent.backend = {
       mode = "dashboard";
       host = d.address;
     };
     services.hermes-agent.settings.dashboard.trusted_proxies = [ d.proxy ];
     systemd.services.hermes-backend = {
-      unitConfig.ConditionFileNotEmpty = credentials;
-      # Not in config.yaml: there it gates the gateway's own loopback API too,
-      # which has no login and then refuses to start.
-      environment.HERMES_DASHBOARD_PUBLIC_URL = d.publicUrl;
+      # Not in config.yaml: there the public URL gates the gateway's own
+      # loopback API too, which has no login and then refuses to start.
+      environment = {
+        HERMES_DASHBOARD_PUBLIC_URL = d.publicUrl;
+        HERMES_DASHBOARD_OIDC_ISSUER = d.oidc.issuer;
+        HERMES_DASHBOARD_OIDC_CLIENT_ID = d.oidc.clientId;
+      };
       serviceConfig = {
-        EnvironmentFile = credentials;
         BindReadOnlyPaths = readOnlyState;
         RestartPreventExitStatus = 78; # another backend owns the host
       };
