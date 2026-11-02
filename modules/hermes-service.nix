@@ -259,6 +259,32 @@ in
           signal = [ "hermes-signal" "kanban" ];
           cli = [ "hermes-cli" "kanban" ];
         };
+        # Every turn pays for the prompt: only the working set stays eager,
+        # the rest is one tool_search away.
+        tools = {
+          tool_search.defer = [
+            "kanban_show" "kanban_list" "kanban_create" "kanban_complete" "kanban_block"
+            "kanban_request_review" "kanban_request_changes" "kanban_heartbeat"
+            "kanban_link" "kanban_unblock" "kanban_attach" "kanban_attach_url" "kanban_attachments"
+            "kanban_schedule" "delegate_task" "execute_code" "memory" "clarify" "skills_list"
+            "skill_manage" "web_search" "web_extract" "vision_analyze" "text_to_speech"
+            "browser_exec" "browser_cdp" "browser_dialog" "browser_vault" "computer_use"
+            "session_search" "image_generate" "todo_list" "process_manage" "cronjob_manage"
+          ];
+          connectors.enabled = false;
+        };
+        skills.disabled = [
+          "apple-notes" "apple-reminders" "findmy" "imessage" "claude-code" "codex" "computer-use"
+          "hermes-agent" "opencode" "architecture-diagram" "ascii-video" "baoyu-infographic"
+          "claude-design" "design-md" "humanizer" "manim-video" "p5js" "popular-web-designs"
+          "email-inbox-triage" "himalaya" "gif-search" "songsee" "youtube-content" "obsidian"
+          "airtable" "box" "document-to-action-items" "docx" "google-workspace" "maps"
+          "meeting-action-items" "notion" "pdf" "powerpoint" "product-price-monitor"
+          "teams-meeting-pipeline" "weekly-review-planning" "xlsx" "arxiv" "competitor-news-monitor"
+          "grounded-citations" "llm-wiki" "xurl" "dogfood" "hermes-agent-skill-authoring"
+          "inspecting-hermes-desktop-dom" "node-inspect-debugger" "python-debugpy" "spike"
+          "test-driven-development" "blocked-page-recovery"
+        ];
         # The board is a task list, not a work queue: don't let the
         # gateway spawn workers that act on tasks by themselves.
         kanban.dispatch_in_gateway = false;
