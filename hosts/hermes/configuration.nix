@@ -121,6 +121,14 @@ in
         IPv6AcceptRA = false;
       };
     };
+    # nixos-container sets up the containers' veths itself. networkd's stock
+    # 80-container-ve.network would also masquerade the host's own address on
+    # them, so the dashboard's proxy reached the container from one its
+    # firewall drops.
+    systemd.network.networks."05-container-ve" = {
+      matchConfig.Name = "ve-*";
+      linkConfig.Unmanaged = true;
+    };
 
     # Its own tailnet node, for the PR events (.github/workflows/pr-events.yml
     # posts to it at cut-over). The auth key is pre-authorised for tag:hermes.
