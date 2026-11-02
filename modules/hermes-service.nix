@@ -369,12 +369,12 @@ in
       mode = "dashboard";
       host = d.address;
     };
-    services.hermes-agent.settings.dashboard = {
-      public_url = d.publicUrl;
-      trusted_proxies = [ d.proxy ];
-    };
+    services.hermes-agent.settings.dashboard.trusted_proxies = [ d.proxy ];
     systemd.services.hermes-backend = {
       unitConfig.ConditionFileNotEmpty = credentials;
+      # Not in config.yaml: there it gates the gateway's own loopback API too,
+      # which has no login and then refuses to start.
+      environment.HERMES_DASHBOARD_PUBLIC_URL = d.publicUrl;
       serviceConfig = {
         EnvironmentFile = credentials;
         BindReadOnlyPaths = readOnlyState;
