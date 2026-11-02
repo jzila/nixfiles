@@ -75,6 +75,7 @@ let
   readOnlyState = [
     "${scripts}:${hermesHome}/scripts"
     "${./hermes-plugins/model-options}:${hermesHome}/plugins/model-options"
+    "${./hermes-plugins/kanban-list}:${hermesHome}/plugins/kanban-list"
     "${hermesHome}/skills/devops/home-assistant-changes"
     "${hermesHome}/skills/devops/nixfiles-changes"
     "${hermesHome}/config.yaml"
@@ -198,6 +199,7 @@ in
       "d ${hermesHome}/scripts 2770 hermes hermes -"
       "d ${hermesHome}/plugins 2770 hermes hermes -"
       "d ${hermesHome}/plugins/model-options 2770 hermes hermes -"
+      "d ${hermesHome}/plugins/kanban-list 2770 hermes hermes -"
     ];
     systemd.services.hermes-agent.serviceConfig.BindReadOnlyPaths = readOnlyState;
     systemd.services."user@${toString hermesId}" = {
@@ -292,7 +294,8 @@ in
             }
           ];
         };
-        plugins.enabled = [ "model-options" ];
+        plugins.enabled = [ "model-options" "kanban-list" ];
+        plugins.entries.kanban-list.granted_capabilities = [ "tools.override" ];
         # On OpenRouter, only endpoints that don't store or train on
         # prompts; flex answers can take up to ~15 minutes.
         provider_routing.models."google/gemini-4-argon".data_collection = "deny";

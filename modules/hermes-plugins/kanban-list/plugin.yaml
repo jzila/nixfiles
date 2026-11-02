@@ -1,0 +1,6 @@
+name: kanban-list
+version: 1.0.0
+description: "kanban_list hides tasks with priority < 0 unless include_low_priority."
+author: jzila/nixfiles
+capabilities:
+  - tools.override
