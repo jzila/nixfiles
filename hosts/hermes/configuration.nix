@@ -1,21 +1,20 @@
-# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts four
-# NixOS containers: hermes (Hermes Agent's gateway, signal-cli, nginx; the
-# same modules/hermes/hermes-container.nix as on argo, inner system
+# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts three
+# NixOS containers: hermes (Hermes Agent's gateway, signal-cli, nginx;
+# modules/hermes/hermes-container.nix, inner system
 # modules/hermes/hermes-service.nix), ha and ha-pr (the Home Assistant runners,
-# modules/ha-gitops.nix) and nixfiles (this repo's, for its deploy job,
-# ./deploy.nix), the runners all modules/runners/runner-containers.nix. The
-# VM itself keeps the credentials (modules/hermes/hermes-credentials.nix),
-# Tailscale and its own deploy. TrueNAS
-# defines the VM (CPUs, memory, the zvol, the NIC); this is the system on its
-# disk. First booted from packages.x86_64-linux.hermes-image, then it deploys
-# main to itself (./deploy.nix). Setup, cut-over and rollback: ./README.md.
+# modules/ha-gitops.nix). The VM itself keeps the credentials
+# (modules/hermes/hermes-container.nix), Tailscale and its own upgrades.
+# TrueNAS defines the VM (CPUs, memory, the zvol, the NIC); this is the system
+# on its disk. First booted from packages.x86_64-linux.hermes-image, then it
+# follows the deploy branch, which CI moves to main once main's builds pass.
+# Setup: ./README.md.
 #
 #   - Network: a plain LAN guest (DHCP by default; keep its address fixed with
 #     a reservation, argo's firewall and Home Assistant use it). IPv4 only on
 #     the LAN. Tailscale as its own node (tag:hermes) for the PR events.
 #   - Inbound: ssh to the VM (keys below). The mutual-TLS webhook (8645, from
 #     Home Assistant's address only) and the PR events (8646, from the tailnet
-#     only) are DNATed into the hermes container, as on argo. Hermes's
+#     only) are DNATed into the hermes container. Hermes's
 #     dashboard (HTTPS, from argo and the tailnet) goes through nginx
 #     here (modules/hermes/hermes-dashboard-proxy.nix).
 #   - Hermes's egress is the container's (hermes-container.nix): argo's
@@ -29,13 +28,12 @@
 #   - Secrets, provisioned out of band, never in this repo, root-only:
 #     /etc/hermes (gateway.env, github-app.pem: the VM's own key for the
 #     zila-hermes app; only gateway.env is bound read-only into the
-#     container, as on argo), /etc/hermes-tls (the webhook certificate
+#     container), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
 #     only), /etc/hermes/ha-token (the egress gateway's Home Assistant
-#     token, never in the container), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
-#     and /etc/nixfiles-runner (the runners'). Each service waits for its
-#     secret.
-{ config, lib, pkgs, modulesPath, ... }:
+#     token, never in the container), /etc/ha-tofu/ha and /etc/ha-tofu/ha-pr
+#     (the runners'). Each service waits for its secret.
+{ config, lib, pkgs, modulesPath, self, ... }:
 let
   cfg = config.hermesVm;
   tailscaleKey = "/etc/tailscale/authkey";
@@ -50,7 +48,6 @@ in
     ../../modules/hermes/hermes-egress.nix
     ../../modules/hermes/hermes-dashboard-proxy.nix
     ../../modules/ha-gitops.nix
-    ./deploy.nix
   ];
 
   options.hermesVm = {
@@ -130,8 +127,8 @@ in
       linkConfig.Unmanaged = true;
     };
 
-    # Its own tailnet node, for the PR events (.github/workflows/pr-events.yml
-    # posts to it at cut-over). The auth key is pre-authorised for tag:hermes.
+    # Its own tailnet node, for the PR events (.github/workflows/pr-events.yml).
+    # The auth key is pre-authorised for tag:hermes.
     services.tailscale = {
       enable = true;
       openFirewall = true;
@@ -160,25 +157,13 @@ in
 
     # ── Hermes, in its container ──────────────────────────────────────────
     services.hermesContainer = {
-      enable = true;
-      # Its own range (argo's container is 10.233.1.x; ha and ha-pr are
-      # 10.233.3.x and 10.233.4.x).
-      hostAddress = "10.233.2.1";
-      localAddress = "10.233.2.2";
-      # On the VM itself only the Home Assistant proxy below; argo's ollama
-      # over the LAN instead.
-      hostPorts = [ config.services.hermesEgress.port ];
-      haProxyUrl = "http://${config.services.hermesContainer.hostAddress}:${toString config.services.hermesEgress.port}";
       ollamaHost = cfg.ollamaAddress;
       allowedLanTargets = [
         { address = cfg.ollamaAddress; port = 11434; }
         { address = cfg.idAddress; port = 443; }
       ];
       inherit (cfg) resolvers homeAssistantAddress;
-      stateUsers = [ ];
-      hideNixDaemon = true;
       dashboard = {
-        enable = true;
         publicUrl = "https://hermes.local.zila.dev";
         oidc = {
           issuer = "https://id.local.zila.dev";
@@ -196,8 +181,6 @@ in
       clientAddress = config.services.hermesContainer.localAddress;
       upstream = "https://${cfg.homeAssistantAddress}";
     };
-    systemd.services.hermes-github-token.unitConfig.ConditionPathExists =
-      "/etc/hermes/github-app.pem";
     # nginx in the container waits for the certificate (hermes-service.nix):
     # start it once the first one is in place. (Stays active, so the path
     # unit doesn't fire again; renewals reload nginx themselves.) Only if the
@@ -224,7 +207,7 @@ in
     };
 
     # The Home Assistant runners, each in its own container; they start only
-    # once their credentials are in /etc/ha-tofu (README.md, cut-over).
+    # once their credentials are in /etc/ha-tofu.
     services.haGitops.enable = true;
 
     # ── Administration ────────────────────────────────────────────────────
@@ -245,14 +228,42 @@ in
     environment.systemPackages = [ pkgs.step-cli ];
 
     # ── Nix ───────────────────────────────────────────────────────────────
-    # The VM builds its own updates (./deploy.nix) on its own disk. Only root
-    # (the deploy) and the runners (`nix develop` in their jobs, through the
+    # The VM builds its own updates on its own disk. Only root
+    # (the upgrade) and the runners (`nix develop` in their jobs, through the
     # socket nspawn binds into their containers) may use the daemon: not the
     # hermes user, not the hermes container (whose socket is covered anyway).
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
       allowed-users = [ "root" "ha-tofu" "ha-pr" ];
       trusted-users = [ "root" ];
+    };
+    # Follows the deploy branch, which CI fast-forwards to main once main's
+    # builds pass. Hermes can push branches, so only a deploy on main is
+    # switched to, pinned to the commit checked. git+https, not github:, which
+    # spends the API's unauthenticated 60 requests an hour.
+    system.configurationRevision = self.rev or null;
+    systemd.services.nixos-upgrade = {
+      description = "Switch to the deploy branch";
+      restartIfChanged = false;
+      unitConfig.X-StopOnRemoval = false;
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
+      path = [ config.nix.package pkgs.git config.system.build.nixos-rebuild ];
+      serviceConfig = {
+        Type = "oneshot";
+        CacheDirectory = "nixos-upgrade";
+      };
+      startAt = "*:0/5";
+      script = ''
+        repo=https://github.com/jzila/nixfiles
+        rev=$(git ls-remote "$repo" refs/heads/deploy | cut -f1)
+        [ "$rev" != "$(/run/current-system/sw/bin/nixos-version --configuration-revision)" ] || exit 0
+        cd "$CACHE_DIRECTORY"
+        git init -q --bare
+        git fetch -q --filter=tree:0 "$repo" main
+        git merge-base --is-ancestor "$rev" FETCH_HEAD || { echo "deploy ($rev) is not on main" >&2; exit 1; }
+        nixos-rebuild switch --flake "git+$repo?rev=$rev#hermes"
+      '';
     };
     nix.gc = {
       automatic = true;

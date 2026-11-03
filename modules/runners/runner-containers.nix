@@ -7,7 +7,7 @@
 #     start). The container starts only once that directory exists, so a
 #     runner never registers before it is provisioned. Only root can enter
 #     the containers.
-#   - Jobs: a job-started hook (runner-guard.nix) refuses any job that isn't
+#   - Jobs: a job-started hook (guard below) refuses any job that isn't
 #     the repo's own, from main's workflows, against main, for the runner's
 #     events. Approval
 #     is the repo's main ruleset's (PR required, John's review as code
@@ -31,6 +31,23 @@ let
     map (match: ''iifname "ve-${name}" ${match} accept'') (
       [ "ip daddr { ${lib.concatStringsSep ", " r.resolvers} } meta l4proto { tcp, udp } th dport 53" ] ++ r.allow)
   ) cfg);
+
+  # A failing hook fails the job before any step runs. (The runner only
+  # accepts hooks ending in .sh, .ps1 or .js.)
+  guard = pkgs: name: r: pkgs.writeShellScript "${name}-guard.sh" ''
+    fail() { echo "${name} runner: refusing this job: $*" >&2; exit 1; }
+    [ "''${GITHUB_REPOSITORY:-}" = ${r.repo} ] || fail "repository ''${GITHUB_REPOSITORY:-?}"
+    [ "''${GITHUB_REF:-}" = refs/heads/main ] || fail "ref ''${GITHUB_REF:-?} is not main"
+    case "''${GITHUB_WORKFLOW_REF:-}" in
+      ${r.repo}/.github/workflows/*@refs/heads/main) ;;
+      *) fail "workflow ''${GITHUB_WORKFLOW_REF:-?} is not from main" ;;
+    esac
+    case "''${GITHUB_EVENT_NAME:-}" in
+      ${lib.concatStringsSep "|" r.events}) ;;
+      *) fail "event ''${GITHUB_EVENT_NAME:-?}" ;;
+    esac
+    echo "${name} runner: $GITHUB_WORKFLOW_REF, $GITHUB_EVENT_NAME"
+  '';
 
   container = name: r: {
     autoStart = true;
@@ -60,7 +77,7 @@ let
         replace = true;
         extraLabels = [ name ];
         inherit (r) user group;
-        extraEnvironment.ACTIONS_RUNNER_HOOK_JOB_STARTED = import ./runner-guard.nix { inherit lib pkgs; } name r.repo r.events;
+        extraEnvironment.ACTIONS_RUNNER_HOOK_JOB_STARTED = guard pkgs name r;
       } r.runner;
       # The host sets up the container's network as the container boots, so
       # the first registration can fail on DNS; the module doesn't retry.

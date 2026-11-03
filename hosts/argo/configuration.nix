@@ -8,14 +8,9 @@
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
     ./ollama-models.nix
-    ../../modules/hermes/hermes-container.nix
   ];
 
-  # Hermes moved to the hermes VM on the TrueNAS box (hosts/hermes/). Kept
-  # imported, off, for a rollback (hosts/hermes/README.md, "Rollback"); its
-  # state stays in /var/lib. The Home Assistant runners moved too; they only
-  # run in containers now.
-  services.hermesContainer.enable = false;
+  home-manager.users.john.hermes.remote = true;
 
   # The hermes VM's dashboard uses a step CA certificate; Firefox and Chrome
   # read this through NSS (p11-kit).
