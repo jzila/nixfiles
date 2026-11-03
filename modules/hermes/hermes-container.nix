@@ -7,7 +7,7 @@
 # system with a private network, and inside it the upstream module runs in its
 # native mode: the gateway is the unprivileged `hermes` user, never root.
 # What runs inside (the gateway, signal-cli, nginx, scripts, skills) is
-# modules/hermes-service.nix.
+# hermes-service.nix.
 #
 # Two hosts use this module, one at a time: argo today, and the hermes VM on
 # the TrueNAS box (hosts/hermes/), which runs this same container with its own
@@ -54,7 +54,7 @@
 #     reads the PR from GitHub itself.
 #   - Home Assistant: no access from the container itself (egress rejects the
 #     LAN). Where the host runs the egress gateway
-#     (modules/hermes-egress.nix, the hermes VM), haProxyUrl points at it
+#     (hermes-egress.nix, the hermes VM), haProxyUrl points at it
 #     on the host's end of the veth, a hostPorts entry; Hermes uses it with
 #     `ha-get` and `ha-call` and never sees the token.
 #   - Dashboard (dashboard.enable): see hermes-service.nix. Its login is
@@ -153,7 +153,7 @@ in
     haProxyUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "The Home Assistant egress gateway as the container reaches it (modules/hermes-egress.nix); null for none.";
+      description = "The Home Assistant egress gateway as the container reaches it (hermes-egress.nix); null for none.";
     };
     dashboard = {
       enable = lib.mkEnableOption "Hermes's dashboard (see the header)";
@@ -195,7 +195,7 @@ in
     "z ${tlsDir}/server.key 0640 root ${nginxGid} -"
   ];
 
-  # Token minting and certificate renewal (modules/hermes-credentials.nix).
+  # Token minting and certificate renewal (hermes-credentials.nix).
   hermes.credentials = {
     enable = true;
     inherit githubTokenDir tlsDir;
@@ -296,7 +296,7 @@ in
       };
     };
 
-    # The inner system is modules/hermes-service.nix, shared with the VM.
+    # The inner system is hermes-service.nix, shared with the VM.
     specialArgs = { inherit hermes-agent; };
     config = {
       imports = [ ./hermes-service.nix ];

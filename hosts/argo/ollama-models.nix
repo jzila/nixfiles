@@ -59,7 +59,7 @@ let
     PARAMETER presence_penalty 0
   '';
   # 131072 tokens of context, as measured above; Hermes's context_length
-  # (modules/hermes-service.nix) matches. A Modelfile num_ctx overrides
+  # (modules/hermes/hermes-service.nix) matches. A Modelfile num_ctx overrides
   # OLLAMA_CONTEXT_LENGTH, so /v1 clients get it too.
   modelfile = pkgs.writeText "qwen3.8-modelfile" ''
     FROM ${qwenBase}

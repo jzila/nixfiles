@@ -226,14 +226,14 @@
       # nix build .#checks.x86_64-linux.ha-log (Hermes's ha-log webhook script)
       checks.x86_64-linux.ha-log = let pkgs = mkPkgs "x86_64-linux"; in
         pkgs.runCommand "ha-log-test" { } ''
-          cd ${./modules/hermes-scripts}
+          cd ${./modules/hermes/hermes-scripts}
           PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -m unittest test_ha_log && touch $out
         '';
 
       checks.x86_64-linux.hermes-egress =
-        import ./modules/hermes-egress-test.nix { pkgs = mkPkgs "x86_64-linux"; };
+        import ./modules/hermes/hermes-egress-test.nix { pkgs = mkPkgs "x86_64-linux"; };
       checks.x86_64-linux.hermes-dashboard-proxy =
-        import ./modules/hermes-dashboard-proxy-test.nix { pkgs = mkPkgs "x86_64-linux"; };
+        import ./modules/hermes/hermes-dashboard-proxy-test.nix { pkgs = mkPkgs "x86_64-linux"; };
 
       nixosConfigurations = {
         # Main system configuration with Home Manager (include repo hardware config)

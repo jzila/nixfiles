@@ -1,7 +1,7 @@
 # What runs inside Hermes's sandbox: Hermes Agent's gateway (as the
 # unprivileged `hermes` user), signal-cli, nginx in front of the webhook
 # receiver, the webhook scripts and the skills this repo maintains: the inner
-# system of the hermes container (modules/hermes-container.nix), on argo and
+# system of the hermes container (hermes-container.nix), on argo and
 # in the hermes VM alike; see the container's header for the design.
 #
 # The container provides, as read-only bind mounts of the host's copies:
@@ -10,10 +10,10 @@
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
 # plus Hermes's state at /var/lib/hermes, where ollama is in
 # hermes.ollamaHost, and the Home Assistant egress gateway (if the host runs
-# one, modules/hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
+# one, hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
 #
 # hermes.dashboard: `hermes dashboard`, behind the host's HTTPS front
-# (modules/hermes-dashboard-proxy.nix). It binds the container's address,
+# (hermes-dashboard-proxy.nix). It binds the container's address,
 # which turns on its login gate, and runs with the gateway's state and
 # read-only files; the `hermes` user can already drive the gateway's own
 # loopback API, so it grants Hermes nothing new.
@@ -32,10 +32,10 @@ let
   homeAssistantCertName = "homeassistant.local.zila.dev";
   # PR event ingress from GitHub Actions over the tailnet.
   prEventsPort = 8646;
-  stepRootCa = ./ssh-ca/root_ca.crt;
+  stepRootCa = ../ssh-ca/root_ca.crt;
 
   # gh as the zila-hermes app, with the token root mints
-  # (modules/hermes-credentials.nix).
+  # (hermes-credentials.nix).
   ghApp = pkgs.writeShellScriptBin "gh" ''
     GH_TOKEN=$(cat ${githubTokenDir}/token) exec ${lib.getExe pkgs.gh} "$@"
   '';

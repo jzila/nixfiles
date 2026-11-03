@@ -16,7 +16,7 @@
 #     DNS to the resolvers, its own `allow` rules, the internet, and nothing
 #     else on private or local ranges; nothing on the host; no new
 #     connections in. One nftables table for all of them (the host must use
-#     nftables), next to hermes-container.nix's.
+#     nftables), next to the hermes container's (../hermes/hermes-container.nix).
 #   - Nix: `nix develop` in the jobs, through the host's nix-daemon (the
 #     host's allowed-users must list the runner's user).
 #

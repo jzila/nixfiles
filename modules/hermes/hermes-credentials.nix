@@ -1,7 +1,7 @@
 # Hermes's credentials, kept by root next to the gateway: the zila-hermes
 # GitHub App's installation token, minted from the app's private key, and
 # renewal of the webhook TLS certificate. Shared by argo, which keeps them for
-# the container (modules/hermes-container.nix), and the hermes VM
+# the container (hermes-container.nix), and the hermes VM
 # (hosts/hermes/), which keeps its own: its own app key and its own
 # certificate, provisioned out of band, never in this repo.
 #
@@ -15,7 +15,7 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.hermes.credentials;
-  stepRootCa = ./ssh-ca/root_ca.crt;
+  stepRootCa = ../ssh-ca/root_ca.crt;
   nginxGid = toString config.ids.gids.nginx;
   githubAppId = "5415128";
 in

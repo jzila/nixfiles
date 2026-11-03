@@ -1,6 +1,6 @@
 # GitHub Actions runners for jzila/home-assistant, which declares Home Assistant
 # with OpenTofu. Two runners, each in its own container
-# (modules/runner-containers.nix), as two users:
+# (modules/runners/runner-containers.nix), as two users:
 #
 #   ha     holds the Home Assistant credentials (admin token, the SSH key the
 #          add-on forces through /data/gate.sh) and writes the state. Its
@@ -147,7 +147,7 @@ let
   };
 in
 {
-  imports = [ ./runner-containers.nix ];
+  imports = [ ./runners/runner-containers.nix ];
 
   options.services.haGitops = {
     enable = lib.mkEnableOption "the GitHub Actions runners for jzila/home-assistant, each in its own container";
