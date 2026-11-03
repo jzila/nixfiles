@@ -226,7 +226,7 @@
       # nix build .#checks.x86_64-linux.ha-log (Hermes's ha-log webhook script)
       checks.x86_64-linux.ha-log = let pkgs = mkPkgs "x86_64-linux"; in
         pkgs.runCommand "ha-log-test" { } ''
-          cd ${./modules/hermes-scripts}
+          cd ${./modules/hermes/hermes-scripts}
           PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -m unittest test_ha_log && touch $out
         '';
 

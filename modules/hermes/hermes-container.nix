@@ -7,7 +7,7 @@
 # system with a private network, and inside it the upstream module runs in its
 # native mode: the gateway is the unprivileged `hermes` user, never root.
 # What runs inside (the gateway, signal-cli, nginx, scripts, skills) is
-# modules/hermes-service.nix.
+# hermes-service.nix.
 #
 # Two hosts use this module, one at a time: argo today, and the hermes VM on
 # the TrueNAS box (hosts/hermes/), which runs this same container with its own
@@ -195,7 +195,7 @@ in
     "z ${tlsDir}/server.key 0640 root ${nginxGid} -"
   ];
 
-  # Token minting and certificate renewal (modules/hermes-credentials.nix).
+  # Token minting and certificate renewal (hermes-credentials.nix).
   hermes.credentials = {
     enable = true;
     inherit githubTokenDir tlsDir;
@@ -296,7 +296,7 @@ in
       };
     };
 
-    # The inner system is modules/hermes-service.nix, shared with the VM.
+    # The inner system is hermes-service.nix, shared with the VM.
     specialArgs = { inherit hermes-agent; };
     config = {
       imports = [ ./hermes-service.nix ];

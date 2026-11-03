@@ -1,7 +1,7 @@
 """Delegation backend `model-options`: each delegate_task task may pick a coding model.
 
 The options live in config.yaml, under delegation.backends.model-options.options (set in
-modules/hermes-service.nix), each a route in the delegation section's vocabulary (model,
+modules/hermes/hermes-service.nix), each a route in the delegation section's vocabulary (model,
 provider, base_url, api_key, request_overrides, reasoning_effort) plus a name and a
 description the model reads. A task names one in `model_option`; a task without it takes
 the delegation section's own route, as with the default backend.

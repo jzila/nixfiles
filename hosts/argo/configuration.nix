@@ -8,7 +8,7 @@
     ../../modules/desktop/aliza.nix
     ../../modules/ollama.nix
     ./ollama-models.nix
-    ../../modules/hermes-container.nix
+    ../../modules/hermes/hermes-container.nix
   ];
 
   # Hermes moved to the hermes VM on the TrueNAS box (hosts/hermes/). Kept

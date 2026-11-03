@@ -4,12 +4,12 @@ A NixOS VM next to Home Assistant's on the TrueNAS box, hosting four NixOS
 containers:
 
 - `hermes`: Hermes Agent's gateway, signal-cli and the webhook front (nginx).
-  It is the same `modules/hermes-container.nix` as on argo, with the VM's
+  It is the same `modules/hermes/hermes-container.nix` as on argo, with the VM's
   addresses: its own egress rules, NAT, and the forwarded webhook ports.
 - `ha` and `ha-pr`: the Home Assistant runners (`modules/ha-gitops.nix`).
 - `nixfiles`: this repo's runner, for CI's `Deploy (hermes)` job (`deploy.nix`).
 
-All three runners are `modules/runner-containers.nix` entries.
+All three runners are `modules/runners/runner-containers.nix` entries.
 
 The VM itself keeps the credentials (its own GitHub App key and token, the
 webhook certificate, `gateway.env`); the hermes container gets read-only
@@ -22,7 +22,7 @@ itself (`deploy.nix`).
 Only root and the runners may use the VM's nix-daemon. The hermes container
 doesn't see its socket at all. Hermes doesn't build; CI checks its PRs.
 
-Until the cut-over below, the container on argo (`modules/hermes-container.nix`)
+Until the cut-over below, the container on argo (`modules/hermes/hermes-container.nix`)
 stays the live Hermes and argo runs the Home Assistant runners. The VM can run
 alongside it with empty state: no Signal account, no webhooks routed to it, its
 runner containers not started. **Signal must never run in two places**, and

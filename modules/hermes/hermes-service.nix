@@ -1,7 +1,7 @@
 # What runs inside Hermes's sandbox: Hermes Agent's gateway (as the
 # unprivileged `hermes` user), signal-cli, nginx in front of the webhook
 # receiver, the webhook scripts and the skills this repo maintains: the inner
-# system of the hermes container (modules/hermes-container.nix), on argo and
+# system of the hermes container (hermes-container.nix), on argo and
 # in the hermes VM alike; see the container's header for the design.
 #
 # The container provides, as read-only bind mounts of the host's copies:
@@ -32,10 +32,10 @@ let
   homeAssistantCertName = "homeassistant.local.zila.dev";
   # PR event ingress from GitHub Actions over the tailnet.
   prEventsPort = 8646;
-  stepRootCa = ./ssh-ca/root_ca.crt;
+  stepRootCa = ../ssh-ca/root_ca.crt;
 
   # gh as the zila-hermes app, with the token root mints
-  # (modules/hermes-credentials.nix).
+  # (hermes-credentials.nix).
   ghApp = pkgs.writeShellScriptBin "gh" ''
     GH_TOKEN=$(cat ${githubTokenDir}/token) exec ${lib.getExe pkgs.gh} "$@"
   '';
@@ -85,7 +85,7 @@ in
 {
   imports = [
     hermes-agent.nixosModules.default
-    ./hermes-kanban.nix
+    ../hermes-kanban.nix
     ./signal-cli.nix
   ];
 

@@ -1,4 +1,4 @@
-# HTTPS front for Hermes's dashboard (hermes.dashboard, hermes-service.nix),
+# HTTPS front for Hermes's dashboard (hermes.dashboard, hermes/hermes-service.nix),
 # for browsers on argo and the tailnet. Auth stays the dashboard's own login.
 { config, lib, ... }:
 let

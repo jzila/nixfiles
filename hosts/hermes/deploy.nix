@@ -1,7 +1,7 @@
 # The hermes VM deploys jzila/nixfiles main to itself; argo never deploys
 # automatically. CI's "Deploy (hermes)" job (.github/workflows/ci.yml), on
 # every push to main once the builds pass, runs on the VM's own GitHub runner
-# `nixfiles` (its container, modules/runner-containers.nix: no credentials but
+# `nixfiles` (its container, modules/runners/runner-containers.nix: no credentials but
 # its registration token, nothing on the LAN). It can't switch the VM; it
 # asks: it drops a request in /run/nixos-deploy/request (deploy/request.sh),
 # which starts nixos-deploy.service as root here (deploy/run.sh), and streams
@@ -115,7 +115,7 @@ let
   };
 in
 {
-  imports = [ ../../modules/runner-containers.nix ];
+  imports = [ ../../modules/runners/runner-containers.nix ];
 
   environment.systemPackages = [ deploy health ]; # dry runs: NIXOS_DEPLOY_DRY_RUN=1
 
