@@ -1,14 +1,13 @@
-# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts four
+# The hermes VM on the TrueNAS box, next to Home Assistant's. It hosts three
 # NixOS containers: hermes (Hermes Agent's gateway, signal-cli, nginx;
 # modules/hermes/hermes-container.nix, inner system
 # modules/hermes/hermes-service.nix), ha and ha-pr (the Home Assistant runners,
-# modules/ha-gitops.nix) and nixfiles (this repo's, for its deploy job,
-# ./deploy.nix), the runners all modules/runners/runner-containers.nix. The
-# VM itself keeps the credentials (modules/hermes/hermes-container.nix),
-# Tailscale and its own deploy. TrueNAS
-# defines the VM (CPUs, memory, the zvol, the NIC); this is the system on its
-# disk. First booted from packages.x86_64-linux.hermes-image, then it deploys
-# main to itself (./deploy.nix). Setup: ./README.md.
+# modules/ha-gitops.nix). The VM itself keeps the credentials
+# (modules/hermes/hermes-container.nix), Tailscale and its own upgrades.
+# TrueNAS defines the VM (CPUs, memory, the zvol, the NIC); this is the system
+# on its disk. First booted from packages.x86_64-linux.hermes-image, then it
+# follows the deploy branch, which CI moves to main once main's builds pass.
+# Setup: ./README.md.
 #
 #   - Network: a plain LAN guest (DHCP by default; keep its address fixed with
 #     a reservation, argo's firewall and Home Assistant use it). IPv4 only on
@@ -32,10 +31,9 @@
 #     container), /etc/hermes-tls (the webhook certificate
 #     from the step CA, root plus nginx), /etc/tailscale/authkey (the VM's
 #     only), /etc/hermes/ha-token (the egress gateway's Home Assistant
-#     token, never in the container), /etc/ha-tofu/ha, /etc/ha-tofu/ha-pr
-#     and /etc/nixfiles-runner (the runners'). Each service waits for its
-#     secret.
-{ config, lib, pkgs, modulesPath, ... }:
+#     token, never in the container), /etc/ha-tofu/ha and /etc/ha-tofu/ha-pr
+#     (the runners'). Each service waits for its secret.
+{ config, lib, pkgs, modulesPath, self, ... }:
 let
   cfg = config.hermesVm;
   tailscaleKey = "/etc/tailscale/authkey";
@@ -50,7 +48,6 @@ in
     ../../modules/hermes/hermes-egress.nix
     ../../modules/hermes/hermes-dashboard-proxy.nix
     ../../modules/ha-gitops.nix
-    ./deploy.nix
   ];
 
   options.hermesVm = {
@@ -231,14 +228,42 @@ in
     environment.systemPackages = [ pkgs.step-cli ];
 
     # ── Nix ───────────────────────────────────────────────────────────────
-    # The VM builds its own updates (./deploy.nix) on its own disk. Only root
-    # (the deploy) and the runners (`nix develop` in their jobs, through the
+    # The VM builds its own updates on its own disk. Only root
+    # (the upgrade) and the runners (`nix develop` in their jobs, through the
     # socket nspawn binds into their containers) may use the daemon: not the
     # hermes user, not the hermes container (whose socket is covered anyway).
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
       allowed-users = [ "root" "ha-tofu" "ha-pr" ];
       trusted-users = [ "root" ];
+    };
+    # Follows the deploy branch, which CI fast-forwards to main once main's
+    # builds pass. Hermes can push branches, so only a deploy on main is
+    # switched to, pinned to the commit checked. git+https, not github:, which
+    # spends the API's unauthenticated 60 requests an hour.
+    system.configurationRevision = self.rev or null;
+    systemd.services.nixos-upgrade = {
+      description = "Switch to the deploy branch";
+      restartIfChanged = false;
+      unitConfig.X-StopOnRemoval = false;
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
+      path = [ config.nix.package pkgs.git config.system.build.nixos-rebuild ];
+      serviceConfig = {
+        Type = "oneshot";
+        CacheDirectory = "nixos-upgrade";
+      };
+      startAt = "*:0/5";
+      script = ''
+        repo=https://github.com/jzila/nixfiles
+        rev=$(git ls-remote "$repo" refs/heads/deploy | cut -f1)
+        [ "$rev" != "$(/run/current-system/sw/bin/nixos-version --configuration-revision)" ] || exit 0
+        cd "$CACHE_DIRECTORY"
+        git init -q --bare
+        git fetch -q --filter=tree:0 "$repo" main
+        git merge-base --is-ancestor "$rev" FETCH_HEAD || { echo "deploy ($rev) is not on main" >&2; exit 1; }
+        nixos-rebuild switch --flake "git+$repo?rev=$rev#hermes"
+      '';
     };
     nix.gc = {
       automatic = true;

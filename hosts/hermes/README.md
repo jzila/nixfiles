@@ -1,23 +1,22 @@
 # hermes: Hermes's VM on the TrueNAS box
 
-A NixOS VM next to Home Assistant's on the TrueNAS box, hosting four NixOS
+A NixOS VM next to Home Assistant's on the TrueNAS box, hosting three NixOS
 containers:
 
 - `hermes`: Hermes Agent's gateway, signal-cli and the webhook front (nginx).
   `modules/hermes/hermes-container.nix`: its own egress rules, NAT, and the
   forwarded webhook ports.
-- `ha` and `ha-pr`: the Home Assistant runners (`modules/ha-gitops.nix`).
-- `nixfiles`: this repo's runner, for CI's `Deploy (hermes)` job (`deploy.nix`).
-
-All three runners are `modules/runners/runner-containers.nix` entries.
+- `ha` and `ha-pr`: the Home Assistant runners (`modules/ha-gitops.nix`,
+  `modules/runners/runner-containers.nix` entries).
 
 The VM itself keeps the credentials (its own GitHub App key and token, the
 webhook certificate, `gateway.env`); the hermes container gets read-only
-`gateway.env`, the certificate and the token, never the key. It also runs Tailscale and its own deploy.
+`gateway.env`, the certificate and the token, never the key. It also runs Tailscale.
 
 TrueNAS defines the VM; `configuration.nix` is the system on its disk. It is
-booted once from an image built here, and from then on it deploys `main` to
-itself (`deploy.nix`).
+booted once from an image built here, and from then on `nixos-upgrade`
+switches it to the `deploy` branch every 5 minutes. CI's `Deploy (hermes)` job
+fast-forwards that branch to main once main's checks pass.
 
 Only root and the runners may use the VM's nix-daemon. The hermes container
 doesn't see its socket at all. Hermes doesn't build; CI checks its PRs.
@@ -61,7 +60,7 @@ reboot to grow both.
      `/root/.ssh/authorized_keys`);
    - the hermes container, with empty state;
    - the runner containers not started;
-   - the deploy waiting for `Build NixOS (hermes)` on main.
+   - `nixos-upgrade.timer` following the `deploy` branch.
 
 ## Provision the secrets (out of band, never in this repo)
 
@@ -103,12 +102,11 @@ and own `tag:hermes` (`tagOwners`) so the auth key can carry it.
 ```sh
 systemctl --failed
 machinectl list                                # hermes (ha, ha-pr once provisioned)
-hermes-health                                  # looks into the container; Signal isn't checked without an account
 h() { nixos-container run hermes -- runuser -u hermes -- "$@"; }
 h curl -sS -m5 https://192.168.1.153           # refused: no LAN for Hermes
 h curl -sS http://<argo>:11434/api/version     # ollama on argo answers
 nixos-container run hermes -- ls -l /nix/var/nix/daemon-socket/socket   # /dev/null: no nix-daemon
-journalctl -u nixos-deploy                     # waits for "Build NixOS (hermes)" on main
+journalctl -u nixos-upgrade                    # switches to the deploy branch
 ```
 (`curl` inside the container: use the host's, `$(readlink -f $(command -v curl))`;
 the store is shared.)
@@ -166,43 +164,23 @@ OIDC client `hermes-dashboard` (public, PKCE, callback
    in the tailnet policy, and make `hermes.local.zila.dev` resolve to the
    VM's tailnet address there (the dashboard only accepts that name).
 
-## The deploy runner
-
-CI's `Deploy (hermes)` job runs on the VM's `nixfiles` runner, which asks the
-VM to deploy (`deploy.nix`). Its container starts once its credentials
-directory exists. From argo (a registration token is valid for an hour):
-
-```sh
-gh api -X POST repos/jzila/nixfiles/actions/runners/registration-token -q .token \
-  | ssh root@hermes.local.zila.dev \
-      'install -d -m 0700 /etc/nixfiles-runner && install -m 0600 /dev/stdin /etc/nixfiles-runner/runner-token && systemctl start container@nixfiles'
-```
-
-It registers as `hermes-nixfiles`. Until then, deploy jobs wait in GitHub's
-queue (up to a day). A job queued while the VM is down runs when it is back.
-
 ## Later: the NAS on NixOS
 
 When the TrueNAS box becomes a NixOS host from this repo, its configuration
 declares this VM (UEFI/OVMF, the same vCPUs, memory and LAN bridge, e.g. with
 libvirt or plain QEMU under systemd) and attaches **the same zvol** as its
 disk. Nothing in the VM changes: same system, same state, and it keeps
-deploying itself. Re-pin the NIC's MAC so the address stays put.
+upgrading itself. Re-pin the NIC's MAC so the address stays put.
 
 ## Day to day
 
-- Each push to main shows its deploy as CI's `Deploy (hermes)` job, with the
-  log; the repo's Deployments page lists them. "Re-run" retries a failed one.
-- Pause the self-deploy: `touch /var/lib/nixos-deploy/paused` (remove to
-  resume, then re-run the job). Deploy jobs fail meanwhile, saying so.
-- Logs: the job's, or `journalctl -u nixos-deploy -u nixos-deploy-switch -u nixos-deploy-rollback`,
+- Pause upgrades: `systemctl stop nixos-upgrade.timer` (until the next boot).
+- Logs: `journalctl -u nixos-upgrade`,
   `journalctl -M hermes -u hermes-agent`, Hermes's own in `/var/lib/hermes/.hermes/logs`;
   runners: `nixos-container run ha -- journalctl -u github-runner-ha`.
-- Booting an older generation from the boot menu works, but the next deploy
-  switches back to the deployed commit; pause first to stay there.
+- Booting an older generation from the boot menu works, but the next upgrade
+  switches back to the `deploy` branch; pause first to stay there.
 - `gateway.env` changes: `systemctl restart container@hermes` (the container's
   mount holds the file it started with, so a replaced file needs a restart of
   the container, not just the gateway).
-- A deploy that changes the container's system restarts the container (the
-  switch does), then checks its health from inside. The `nixfiles` runner's
-  container is the exception: the deploy restarts it after its job is done.
+- An upgrade that changes a container's system restarts that container.

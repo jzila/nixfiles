@@ -207,21 +207,9 @@
           // lib.optionalAttrs (system == "x86_64-linux") {
             # The hermes VM's first disk: a UEFI qcow2 of nixosConfigurations.hermes,
             # imported into a zvol on the TrueNAS box (hosts/hermes/README.md).
-            # Built once; after that the VM deploys main to itself.
+            # Built once; after that the VM upgrades itself.
             hermes-image = self.nixosConfigurations.hermes.config.system.build.image;
           });
-
-      # The hermes VM's deploy and health-check logic, against stubs
-      # (hosts/hermes/deploy/test.sh).
-      checks.x86_64-linux.hermes-deploy =
-        let pkgs = mkPkgs "x86_64-linux";
-        in pkgs.runCommand "hermes-deploy-test" {
-          nativeBuildInputs = with pkgs; [ bash jq coreutils util-linux gawk gnugrep gnused findutils shellcheck ];
-        } ''
-          shellcheck -s bash ${./hosts/hermes/deploy}/*.sh
-          bash ${./hosts/hermes/deploy}/test.sh
-          touch $out
-        '';
 
       # nix build .#checks.x86_64-linux.ha-log (Hermes's ha-log webhook script)
       checks.x86_64-linux.ha-log = let pkgs = mkPkgs "x86_64-linux"; in
@@ -249,8 +237,8 @@
         };
 
         # Hermes's VM on the TrueNAS box (hosts/hermes/). Booted once from
-        # packages.x86_64-linux.hermes-image, then deploys main to itself
-        # (hosts/hermes/deploy.nix).
+        # packages.x86_64-linux.hermes-image, then follows the deploy branch
+        # (nixos-upgrade).
         hermes = mkSystem { hostPath = ./hosts/hermes/configuration.nix; };
 
         # Generic netboot installer (no Home Manager needed)
