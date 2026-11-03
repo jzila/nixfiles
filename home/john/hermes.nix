@@ -1,11 +1,11 @@
-# Hermes Agent's CLI. Standalone with its own ~/.hermes, except on argo
-# (which imports the container module, now its rollback copy): there `hermes`
-# is the TUI attached to the Hermes on the hermes VM, through its dashboard
-# (hermes-dashboard-proxy.nix) with a passkey sign-in, `hermes login`
-# (hermes-remote.py). Only the TUI attaches remotely; subcommands don't.
-{ lib, pkgs, osConfig ? { }, hermes-agent, ... }:
+# Hermes Agent's CLI. Standalone with its own ~/.hermes, except with
+# hermes.remote: there `hermes` is the TUI attached to the Hermes on the
+# hermes VM, through its dashboard (hermes-dashboard-proxy.nix) with a passkey
+# sign-in, `hermes login` (hermes-remote.py). Only the TUI attaches remotely;
+# subcommands don't.
+{ config, lib, pkgs, hermes-agent, ... }:
 let
-  remote = (osConfig.services or { }) ? hermesContainer;
+  inherit (config.hermes) remote;
   package = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
   url = "https://hermes.local.zila.dev";
   hermesRemote = pkgs.writeShellApplication {
@@ -26,6 +26,9 @@ let
 in
 {
   imports = [ hermes-agent.homeManagerModules.default ];
-  programs.hermes-agent.enable = !remote;
-  home.packages = lib.optional remote hermesRemote;
+  options.hermes.remote = lib.mkEnableOption "the remote TUI instead of a standalone Hermes";
+  config = {
+    programs.hermes-agent.enable = !remote;
+    home.packages = lib.optional remote hermesRemote;
+  };
 }

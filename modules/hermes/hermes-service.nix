@@ -1,16 +1,16 @@
 # What runs inside Hermes's sandbox: Hermes Agent's gateway (as the
 # unprivileged `hermes` user), signal-cli, nginx in front of the webhook
 # receiver, the webhook scripts and the skills this repo maintains: the inner
-# system of the hermes container (hermes-container.nix), on argo and
-# in the hermes VM alike; see the container's header for the design.
+# system of the hermes container (hermes-container.nix); see its header for
+# the design.
 #
 # The container provides, as read-only bind mounts of the host's copies:
 #   /run/host-secrets/hermes        gateway.env alone (root-only)
 #   /run/host-secrets/hermes-tls    the webhook server certificate (nginx's group)
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
 # plus Hermes's state at /var/lib/hermes, where ollama is in
-# hermes.ollamaHost, and the Home Assistant egress gateway (if the host runs
-# one, hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
+# hermes.ollamaHost, and the host's Home Assistant egress gateway
+# (hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
 #
 # hermes.dashboard: `hermes dashboard`, behind the host's HTTPS front
 # (hermes-dashboard-proxy.nix). It binds the container's address,
@@ -35,7 +35,7 @@ let
   stepRootCa = ../ssh-ca/root_ca.crt;
 
   # gh as the zila-hermes app, with the token root mints
-  # (hermes-credentials.nix).
+  # (hermes-container.nix).
   ghApp = pkgs.writeShellScriptBin "gh" ''
     GH_TOKEN=$(cat ${githubTokenDir}/token) exec ${lib.getExe pkgs.gh} "$@"
   '';
@@ -45,7 +45,7 @@ let
       echo "usage: ha-get /api/<read endpoint>[?query]  (GET only)" >&2
       exit 2
     fi
-    exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 "${toString config.hermes.haProxyUrl}$1"
+    exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 "${config.hermes.haProxyUrl}$1"
   '';
 
   haCall = pkgs.writeShellScriptBin "ha-call" ''
@@ -57,7 +57,7 @@ let
     [[ $service = *.get_* ]] && query='?return_response'
     body=$(${lib.getExe pkgs.jq} -nc '$ARGS.positional | map(capture("^(?<key>[a-z_]+)=(?<value>.*)$"; "s") // error("not key=value: \(.)")) | from_entries' --args "$@") || exit 2
     exec ${lib.getExe pkgs.curl} -sS --fail-with-body --max-time 60 -H 'Content-Type: application/json' \
-      --data-binary "$body" "${toString config.hermes.haProxyUrl}/api/services/''${service/./\/}$query"
+      --data-binary "$body" "${config.hermes.haProxyUrl}/api/services/''${service/./\/}$query"
   '';
 
   githubBotName = "zila-hermes[bot]";
@@ -91,10 +91,9 @@ in
 
   options.hermes.ollamaHost = lib.mkOption {
     type = lib.types.str;
-    description = "Where ollama listens (no authentication): the host, or argo over the LAN.";
+    description = "Where ollama listens (no authentication).";
   };
   options.hermes.dashboard = with lib; {
-    enable = mkEnableOption "Hermes's dashboard";
     address = mkOption { type = types.str; };
     publicUrl = mkOption { type = types.str; };
     oidc = {
@@ -105,9 +104,8 @@ in
     proxy = mkOption { type = types.str; };
   };
   options.hermes.haProxyUrl = lib.mkOption {
-    type = lib.types.nullOr lib.types.str;
-    default = null;
-    description = "The host's read-only Home Assistant proxy, for ha-get; null for none.";
+    type = lib.types.str;
+    description = "The host's Home Assistant egress gateway, for ha-get and ha-call.";
   };
 
   config = lib.mkMerge [ {
@@ -217,7 +215,9 @@ in
         ghApp
         # search_files refuses broad searches without it.
         pkgs.ripgrep
-      ] ++ lib.optionals (config.hermes.haProxyUrl != null) [ haGet haCall ];
+        haGet
+        haCall
+      ];
       # Skills this repo maintains, installed into $HERMES_HOME/skills.
       hermesHomeFiles = {
         "skills/devops/home-assistant-changes/SKILL.md" =
@@ -230,8 +230,8 @@ in
           ./hermes-skills/nixfiles-changes/references/make-pr.md;
       };
       inherit stateDir;
-      # Shared-state permissions: config.yaml group-writable, so the host
-      # CLI can save settings.
+      # Shared-state permissions: config.yaml group-writable, so the CLI can
+      # save settings.
       addToSystemPackages = true;
       # The gateway's own directory (systemd WorkingDirectory).
       workingDirectory = "${stateDir}/workspace";
@@ -247,7 +247,7 @@ in
         };
         # "." resolves against the process's working directory: the
         # gateway's workingDirectory above, and the launch directory for
-        # the host CLI, which reads this same config.yaml.
+        # the CLI, which reads this same config.yaml.
         terminal.cwd = ".";
         # Always ask before dangerous commands (the default "smart" lets a
         # helper model approve some by itself).
@@ -391,7 +391,7 @@ in
     };
   }
 
-  (let d = config.hermes.dashboard; in lib.mkIf d.enable {
+  (let d = config.hermes.dashboard; in {
     services.hermes-agent.backend = {
       mode = "dashboard";
       host = d.address;

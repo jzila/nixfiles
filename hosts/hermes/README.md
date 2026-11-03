@@ -4,8 +4,8 @@ A NixOS VM next to Home Assistant's on the TrueNAS box, hosting four NixOS
 containers:
 
 - `hermes`: Hermes Agent's gateway, signal-cli and the webhook front (nginx).
-  It is the same `modules/hermes/hermes-container.nix` as on argo, with the VM's
-  addresses: its own egress rules, NAT, and the forwarded webhook ports.
+  `modules/hermes/hermes-container.nix`: its own egress rules, NAT, and the
+  forwarded webhook ports.
 - `ha` and `ha-pr`: the Home Assistant runners (`modules/ha-gitops.nix`).
 - `nixfiles`: this repo's runner, for CI's `Deploy (hermes)` job (`deploy.nix`).
 
@@ -13,7 +13,7 @@ All three runners are `modules/runners/runner-containers.nix` entries.
 
 The VM itself keeps the credentials (its own GitHub App key and token, the
 webhook certificate, `gateway.env`); the hermes container gets read-only
-`gateway.env`, the certificate and the token, never the key, as on argo. It also runs Tailscale and its own deploy.
+`gateway.env`, the certificate and the token, never the key. It also runs Tailscale and its own deploy.
 
 TrueNAS defines the VM; `configuration.nix` is the system on its disk. It is
 booted once from an image built here, and from then on it deploys `main` to
@@ -21,12 +21,6 @@ itself (`deploy.nix`).
 
 Only root and the runners may use the VM's nix-daemon. The hermes container
 doesn't see its socket at all. Hermes doesn't build; CI checks its PRs.
-
-Until the cut-over below, the container on argo (`modules/hermes/hermes-container.nix`)
-stays the live Hermes and argo runs the Home Assistant runners. The VM can run
-alongside it with empty state: no Signal account, no webhooks routed to it, its
-runner containers not started. **Signal must never run in two places**, and
-neither must the runners.
 
 ## Build the image
 
@@ -79,6 +73,7 @@ chat or a command line; copy files (`scp`, or `cat file | ssh … 'install -m 06
 | A long-lived token of the non-admin Home Assistant user "Hermes" | `/etc/hermes/ha-token`, root 0600 | `systemctl start hermes-egress-token`; see [Home Assistant](#home-assistant) |
 | A **new** private key for the zila-hermes GitHub App (app settings → Private keys → Generate) | `/etc/hermes/github-app.pem`, root 0600 | `systemctl start hermes-github-token`; `/run/hermes-github/token` appears |
 | A Tailscale auth key, pre-approved, tagged `tag:hermes` | `/etc/tailscale/authkey`, root 0600 (below) | `systemctl restart tailscaled-autoconnect`; `tailscale status` |
+| The runners' credentials: `token`, `ssh-apply`, `state-passphrase` and a registration token (`gh api -X POST repos/jzila/home-assistant/actions/runners/registration-token -q .token`, an hour's life) as `runner-token` | `/etc/ha-tofu/ha/{token,ssh-apply,state-passphrase,runner-token}` and `/etc/ha-tofu/ha-pr/{state-passphrase,runner-token}`, root 0600 | `systemctl start container@ha container@ha-pr`; they register as `hermes-ha` and `hermes-ha-pr` |
 | The webhook server certificate from the step CA, for the VM's name and address (`step ca certificate hermes.local.zila.dev server.crt server.key --provisioner admin --not-after 720h --san hermes.local.zila.dev --san <address>`, on your machine: `step` defaults to the local CA through Home Manager's `~/.step`, or a `step ca bootstrap`) | `/etc/hermes-tls/server.{crt,key}`, `chown root:60` (nginx's gid; the VM has no nginx group of its own), 0640 | nginx in the container starts by itself (`hermes-tls-first`); `hermes-tls-renew` renews it daily within its last 7 days and reloads it |
 
 The Tailscale key has no file to copy; in the VM, read it at a hidden prompt
@@ -91,12 +86,11 @@ printf '%s\n' "$k" | install -m 0600 /dev/stdin /etc/tailscale/authkey; unset k
 ```
 
 Of `/etc/hermes` (root 0700), only `gateway.env` is bound read-only into the
-container (`ha-token` stays with the VM's nginx), as `/run/host-secrets/hermes/gateway.env`, as on argo; the gateway
-gets it through systemd, and the app key never enters the container. `gateway.env`, the signal-cli data
-and the runners' credentials wait for the cut-over.
+container (`ha-token` stays with the VM's nginx), as `/run/host-secrets/hermes/gateway.env`; the gateway
+gets it through systemd, and the app key never enters the container.
 
 Tailnet policy (you edit it): let `tag:github-ci` reach `tag:hermes` on
-tcp/8646 only, as it reaches argo:8646 today, e.g.
+tcp/8646 only, e.g.
 
 ```json
 { "action": "accept", "src": ["tag:github-ci"], "dst": ["tag:hermes:8646"] }
@@ -104,7 +98,7 @@ tcp/8646 only, as it reaches argo:8646 today, e.g.
 
 and own `tag:hermes` (`tagOwners`) so the auth key can carry it.
 
-### Check (prototype)
+### Check
 
 ```sh
 systemctl --failed
@@ -171,110 +165,6 @@ OIDC client `hermes-dashboard` (public, PKCE, callback
 1. For the tailnet: allow your devices `tag:hermes:443` and `tag:hermes:80`
    in the tailnet policy, and make `hermes.local.zila.dev` resolve to the
    VM's tailnet address there (the dashboard only accepts that name).
-
-## Cut-over (manual; one Hermes, one set of runners, at all times)
-
-Pick a quiet moment: no Home Assistant workflow running
-(`gh run list -R jzila/home-assistant`), nothing urgent on Signal.
-
-1. **Stop the VM's empty Hermes container and its deploy**, so nothing
-   restarts it while state is copied:
-   ```sh
-   # in the VM
-   touch /var/lib/nixos-deploy/paused
-   nixos-container stop hermes
-   ```
-2. **Stop Hermes and the runners on argo.** From here on, nothing writes the
-   state on argo; it stays there untouched for a rollback.
-   ```sh
-   # on argo
-   sudo nixos-container stop hermes
-   sudo systemctl stop github-runner-ha github-runner-ha-pr ha-drift-report.path
-   ```
-3. **Copy the state** from argo into the VM, to the same paths: the
-   container's `/var/lib/hermes` is the VM's `/var/lib/hermes` (bound in), and
-   signal-cli's data lives in the container's root,
-   `/var/lib/nixos-containers/hermes/var/lib/signal-cli`, on both. uids match
-   for hermes (870) and signal-cli (871); the runners' state is re-owned to
-   the VM's fixed ha-tofu (880).
-   ```sh
-   # on argo, as john (sudo reads; ssh to the VM's root with the YubiKey)
-   vm=root@hermes.local.zila.dev
-   sudo tar -C /var/lib/hermes --numeric-owner \
-     --exclude=./.hermes/gateway.sock --exclude=./.hermes/gateway.pid --exclude=./.hermes/gateway.lock \
-     -cf - . | ssh $vm 'tar -C /var/lib/hermes --numeric-owner -xpf -'
-   sudo tar -C /var/lib/nixos-containers/hermes/var/lib/signal-cli --numeric-owner -cf - . \
-     | ssh $vm 'tar -C /var/lib/nixos-containers/hermes/var/lib/signal-cli --numeric-owner -xpf -'
-   sudo cat /etc/hermes/gateway.env | ssh $vm 'install -m 0600 /dev/stdin /etc/hermes/gateway.env'
-   sudo tar -C /var/lib/ha-tofu -cf - . \
-     | ssh $vm 'tar -C /var/lib/ha-tofu -xpf - && chown -R ha-tofu:ha-tofu /var/lib/ha-tofu'
-   ```
-4. **The runners' credentials.** Get a fresh registration token
-   (`gh api -X POST repos/jzila/home-assistant/actions/runners/registration-token -q .token`,
-   valid for an hour, usable by both) and lay out `/etc/ha-tofu` in the VM, one
-   directory per container (the directory's existence is what lets each
-   container start):
-   ```
-   /etc/ha-tofu/ha/{token,ssh-apply,state-passphrase,runner-token}   root 0600
-   /etc/ha-tofu/ha-pr/{state-passphrase,runner-token}                root 0600
-   ```
-   Copy `token`, `ssh-apply` and `state-passphrase` from argo's `/etc/ha-tofu`
-   the same way as `gateway.env` above (`sudo cat … | ssh $vm 'install -D -m 0600 /dev/stdin …'`),
-   and the new registration token into both `runner-token` files.
-5. **Start everything in the VM:**
-   ```sh
-   nixos-container start hermes
-   systemctl start container@ha container@ha-pr
-   rm /var/lib/nixos-deploy/paused
-   ```
-   The runners register as `hermes-ha` and `hermes-ha-pr`.
-6. **Point the ingress at the VM:**
-   - Home Assistant's webhook posts (`shell_command`s for `ha-maintenance` and
-     `ha-log`) go to `https://hermes.local.zila.dev:8645/…` instead of argo's
-     address; its client certificate stays as it is.
-   - `.github/workflows/pr-events.yml` here and in home-assistant: target the
-     VM's tailnet name (`hermes`) instead of argo, port 8646 (a PR in each repo).
-   - The tailnet policy rule above (if not done yet), and drop the one for
-     argo:8646.
-7. **argo**, in `hosts/argo/configuration.nix`:
-   ```nix
-   services.hermesContainer.enable = false;
-   ```
-   then `sudo nixos-rebuild switch --flake .#argo`. Then on GitHub, remove the
-   offline runners `argo-ha` and `argo-ha-pr` (repo settings → Runners), delete
-   argo's private key of the zila-hermes app (app settings) and
-   `/etc/hermes/github-app.pem` on argo.
-8. **Verify:**
-   - `hermes-health` passes, Signal `connected`;
-     `nixos-container run hermes -- runuser -u hermes -- env HERMES_HOME=/var/lib/hermes/.hermes hermes kanban list`
-     shows the board;
-   - a Signal message gets a reply;
-   - Home Assistant's maintenance post and an `ha-log` post show up in
-     `journalctl -M hermes -u hermes-agent` (and their tasks reconcile);
-   - a comment on a Hermes PR reaches `github-pr` (Signal);
-   - a home-assistant PR gets its plan from `hermes-ha-pr`; the next apply or
-     nightly drift runs on `hermes-ha`, and drift is filed on the VM's board;
-   - `journalctl -u nixos-deploy` records main as deployed.
-
-The `hermes` CLI on argo then falls back to `~/.hermes` (there is no container
-any more); use it in the VM's container: `ssh root@hermes…`, then
-`nixos-container run hermes -- runuser -u hermes -- env HERMES_HOME=/var/lib/hermes/.hermes hermes …`.
-
-## Rollback
-
-1. In the VM: `touch /var/lib/nixos-deploy/paused; systemctl stop container@hermes container@ha container@ha-pr`,
-   then shut the VM down in TrueNAS (a reboot would start them again).
-2. If the VM ran for a while, copy its state back the same way, the other
-   direction, so nothing is lost and Signal's ratchets don't go back in time:
-   `/var/lib/hermes`, `/var/lib/nixos-containers/hermes/var/lib/signal-cli`
-   (same paths on argo), and `/var/lib/ha-tofu` (re-owned to argo's
-   `ha-tofu`).
-3. Revert the line on argo and rebuild; point the ingress back; argo needs a
-   GitHub App key again. The Home Assistant runners have no argo mode any more
-   (they only run in containers): bringing them back on argo means reverting
-   the commit that removed it (`services.haGitops` on argo, as services on the
-   host), then a new registration token in argo's `/etc/ha-tofu/runner-token`;
-   they re-register as `argo-ha*`.
 
 ## The deploy runner
 
