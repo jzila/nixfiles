@@ -17,12 +17,12 @@
 #     Home Assistant's address only) and the PR events (8646, from the tailnet
 #     only) are DNATed into the hermes container, as on argo. Hermes's
 #     dashboard (HTTPS, from argo and the tailnet) goes through nginx
-#     here (modules/hermes-dashboard-proxy.nix).
+#     here (modules/hermes/hermes-dashboard-proxy.nix).
 #   - Hermes's egress is the container's (hermes-container.nix): argo's
 #     ollama and the NAS's HTTPS proxy, for Pocket ID (allowedLanTargets),
 #     DNS to Pi-hole and the router, the internet;
 #     nothing else on private or local ranges. On the VM itself only the
-#     egress gateway (modules/hermes-egress.nix), which holds the Home
+#     egress gateway (modules/hermes/hermes-egress.nix), which holds the Home
 #     Assistant token; Home Assistant itself stays out of the container's reach.
 #   - Nix: only root and the runners may use the daemon; the hermes container
 #     doesn't even see its socket. Hermes doesn't build; CI checks its PRs.
@@ -47,8 +47,8 @@ in
     "${modulesPath}/virtualisation/disk-image.nix"
     "${modulesPath}/profiles/qemu-guest.nix"
     ../../modules/hermes/hermes-container.nix
-    ../../modules/hermes-egress.nix
-    ../../modules/hermes-dashboard-proxy.nix
+    ../../modules/hermes/hermes-egress.nix
+    ../../modules/hermes/hermes-dashboard-proxy.nix
     ../../modules/ha-gitops.nix
     ./deploy.nix
   ];

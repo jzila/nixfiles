@@ -54,7 +54,7 @@
 #     reads the PR from GitHub itself.
 #   - Home Assistant: no access from the container itself (egress rejects the
 #     LAN). Where the host runs the egress gateway
-#     (modules/hermes-egress.nix, the hermes VM), haProxyUrl points at it
+#     (hermes-egress.nix, the hermes VM), haProxyUrl points at it
 #     on the host's end of the veth, a hostPorts entry; Hermes uses it with
 #     `ha-get` and `ha-call` and never sees the token.
 #   - Dashboard (dashboard.enable): see hermes-service.nix. Its login is
@@ -153,7 +153,7 @@ in
     haProxyUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "The Home Assistant egress gateway as the container reaches it (modules/hermes-egress.nix); null for none.";
+      description = "The Home Assistant egress gateway as the container reaches it (hermes-egress.nix); null for none.";
     };
     dashboard = {
       enable = lib.mkEnableOption "Hermes's dashboard (see the header)";

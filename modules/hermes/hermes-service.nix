@@ -10,10 +10,10 @@
 #   /run/host-secrets/github        the GitHub App installation token (hermes's group)
 # plus Hermes's state at /var/lib/hermes, where ollama is in
 # hermes.ollamaHost, and the Home Assistant egress gateway (if the host runs
-# one, modules/hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
+# one, hermes-egress.nix) in hermes.haProxyUrl, for `ha-get`/`ha-call`.
 #
 # hermes.dashboard: `hermes dashboard`, behind the host's HTTPS front
-# (modules/hermes-dashboard-proxy.nix). It binds the container's address,
+# (hermes-dashboard-proxy.nix). It binds the container's address,
 # which turns on its login gate, and runs with the gateway's state and
 # read-only files; the `hermes` user can already drive the gateway's own
 # loopback API, so it grants Hermes nothing new.
@@ -85,7 +85,7 @@ in
 {
   imports = [
     hermes-agent.nixosModules.default
-    ../hermes-kanban.nix
+    ./hermes-kanban.nix
     ./signal-cli.nix
   ];
 

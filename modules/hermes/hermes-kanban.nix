@@ -1,6 +1,6 @@
 # Every kanban_list costs Hermes context, so the board is kept small: done
 # tasks are archived after a week, and kanban_list hides priority < 0 unless
-# asked (hermes/hermes-plugins/kanban-list).
+# asked (hermes-plugins/kanban-list).
 { config, pkgs, ... }:
 let
   cfg = config.services.hermes-agent;

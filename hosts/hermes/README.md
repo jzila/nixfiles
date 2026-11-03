@@ -127,7 +127,7 @@ nginx answers 400. From the tailnet (`tag:github-ci` only),
 ## Home Assistant
 
 Hermes reaches Home Assistant through the egress gateway, nginx on the VM
-outside its container (`modules/hermes-egress.nix`), on `10.233.2.1:8647`:
+outside its container (`modules/hermes/hermes-egress.nix`), on `10.233.2.1:8647`:
 GET of an allowlist of read endpoints (`ha-get`) and POST of the services in
 `services.hermesEgress.services` (`ha-call`), nothing else. The gateway adds
 the token; the container never sees it. Until a token is installed, the
