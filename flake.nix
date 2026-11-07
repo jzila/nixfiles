@@ -223,6 +223,12 @@
           inherit pkgs;
           hermes = inputs.hermes-agent.packages.x86_64-linux.default;
         }).check;
+      checks.x86_64-linux.ha-todo = let pkgs = mkPkgs "x86_64-linux"; in
+        pkgs.runCommand "ha-todo-test" { } ''
+          cd ${./modules/hermes/hermes-plugins/ha-todo}
+          HOME=$TMPDIR HERMES_HOME=$(mktemp -d) PYTHONDONTWRITEBYTECODE=1 \
+            ${inputs.hermes-agent.packages.x86_64-linux.default.hermesVenv}/bin/python -E -s -m unittest test_ha_todo && touch $out
+        '';
       checks.x86_64-linux.hermes-egress =
         import ./modules/hermes/hermes-egress-test.nix { pkgs = mkPkgs "x86_64-linux"; };
       checks.x86_64-linux.hermes-dashboard-proxy =

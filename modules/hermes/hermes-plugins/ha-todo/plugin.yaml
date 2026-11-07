@@ -1,0 +1,4 @@
+name: ha-todo
+version: 1.0.0
+description: "The ha-todo toolset: Home Assistant's to-do lists, through the egress gateway at settings.url."
+author: jzila/nixfiles
