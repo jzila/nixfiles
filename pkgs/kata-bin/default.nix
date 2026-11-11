@@ -1,8 +1,9 @@
 # kata taken from the official release archives instead of built from source.
 #
 # There is no kata in nixpkgs and upstream ships no flake, so pin the
-# goreleaser archives the same way roborev-bin does. Each holds one statically
-# linked Go binary at the root (CGO_ENABLED=0), so nothing needs a cc.
+# goreleaser archives the same way roborev-bin does. Each holds one Go binary at
+# the root; the Linux ones are cgo builds against glibc, so autoPatchelf fixes
+# their interpreter.
 #
 # This uses the *_homebrew_* archives rather than the plain ones. The two builds
 # are byte-for-byte the same Go code; the homebrew one only sets
@@ -13,21 +14,22 @@
 # Bump with ./scripts/update-bin.sh kata-bin, which rewrites sources.json.
 {
   lib,
-  stdenvNoCC,
+  stdenv,
   fetchurl,
   installShellFiles,
+  autoPatchelfHook,
   versionCheckHook,
   writableTmpDirAsHomeHook,
 }:
 
 let
   sources = lib.importJSON ./sources.json;
-  inherit (stdenvNoCC.hostPlatform) system;
+  inherit (stdenv.hostPlatform) system;
   source =
     sources.systems.${system}
       or (throw "kata-bin: no official kata release build for ${system}");
 in
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "kata-bin";
   version = sources.version;
 
@@ -37,7 +39,7 @@ stdenvNoCC.mkDerivation {
   # unpackPhase has no sourceRoot to settle on.
   dontUnpack = true;
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = [ installShellFiles ] ++ lib.optional stdenv.hostPlatform.isElf autoPatchelfHook;
 
   installPhase = ''
     runHook preInstall
@@ -53,7 +55,11 @@ stdenvNoCC.mkDerivation {
   # carries that signature. Stripping would break it.
   dontStrip = true;
 
-  postFixup = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
+  # The completions below run the binary, and the hook would only patch it after them.
+  dontAutoPatchelf = true;
+  postFixup = lib.optionalString stdenv.hostPlatform.isElf ''
+    autoPatchelf "$out"
+  '' + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd kata \
       --bash <("$out/bin/kata" completion bash) \
       --zsh <("$out/bin/kata" completion zsh) \

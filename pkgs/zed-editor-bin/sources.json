@@ -1,13 +1,13 @@
 {
-  "version": "1.25.3",
+  "version": "1.28.1",
   "systems": {
     "aarch64-darwin": {
-      "url": "https://github.com/zed-industries/zed/releases/download/v1.25.3/Zed-aarch64.dmg",
-      "hash": "sha256-8z4KpohFIoT+bgU4agQIsJkg59GBJatNgzU2KLdfM9o="
+      "url": "https://github.com/zed-industries/zed/releases/download/v1.28.1/Zed-aarch64.dmg",
+      "hash": "sha256-DKGk8eieOCX0mvJvoxr88Mw+UNofS6mInwc19fC+/+Q="
     },
     "x86_64-darwin": {
-      "url": "https://github.com/zed-industries/zed/releases/download/v1.25.3/Zed-x86_64.dmg",
-      "hash": "sha256-MVn7d+FDwVV2JRAQDnZeg5n7b3RBmJjjpIEusu3RfO4="
+      "url": "https://github.com/zed-industries/zed/releases/download/v1.28.1/Zed-x86_64.dmg",
+      "hash": "sha256-5uGjhfconWZ/cw8RyUgWHKRi/iZ5SIsNcoSBc2ONZ0k="
     }
   },
   "update": {
