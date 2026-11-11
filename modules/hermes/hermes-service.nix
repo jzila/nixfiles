@@ -76,6 +76,7 @@ let
     "${scripts}:${hermesHome}/scripts"
     "${./hermes-plugins/model-options}:${hermesHome}/plugins/model-options"
     "${./hermes-plugins/kanban-list}:${hermesHome}/plugins/kanban-list"
+    "${./hermes-plugins/ha-todo}:${hermesHome}/plugins/ha-todo"
     "${hermesHome}/skills/devops/home-assistant-changes"
     "${hermesHome}/skills/devops/nixfiles-changes"
     "${hermesHome}/config.yaml"
@@ -201,6 +202,7 @@ in
       "d ${hermesHome}/plugins 2770 hermes hermes -"
       "d ${hermesHome}/plugins/model-options 2770 hermes hermes -"
       "d ${hermesHome}/plugins/kanban-list 2770 hermes hermes -"
+      "d ${hermesHome}/plugins/ha-todo 2770 hermes hermes -"
     ];
     systemd.services.hermes-agent.serviceConfig.BindReadOnlyPaths = readOnlyState;
     systemd.services."user@${toString hermesId}" = {
@@ -277,8 +279,8 @@ in
         # so without this Hermes "records" tasks in its per-session
         # todo_list, which is gone once the conversation ends.
         platform_toolsets = {
-          signal = [ "hermes-signal" "kanban" ];
-          cli = [ "hermes-cli" "kanban" ];
+          signal = [ "hermes-signal" "kanban" "ha-todo" ];
+          cli = [ "hermes-cli" "kanban" "ha-todo" ];
         };
         # Every turn pays for the prompt: only the working set stays eager,
         # the rest is one tool_search away.
@@ -345,8 +347,10 @@ in
             }
           ];
         };
-        plugins.enabled = [ "model-options" "kanban-list" ];
+        plugins.enabled = [ "model-options" "kanban-list" "ha-todo" ];
         plugins.entries.kanban-list.granted_capabilities = [ "tools.override" ];
+        # The `ha-todo` toolset (Home Assistant's lists) for chat users without a shell.
+        plugins.entries.ha-todo.settings.url = config.hermes.haProxyUrl;
         # On OpenRouter, only endpoints that don't store or train on
         # prompts; flex answers can take up to ~15 minutes.
         provider_routing.models."google/gemini-4-argon".data_collection = "deny";
