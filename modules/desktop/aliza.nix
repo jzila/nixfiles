@@ -223,7 +223,6 @@
 
     # Desktop utilities
     kdePackages.plasma-thunderbolt
-    keybase-gui
   ] ++ [
     # Unstable packages
     pkgs-unstable.zsa-udev-rules
