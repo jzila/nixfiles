@@ -30,6 +30,8 @@ class Client(unittest.TestCase):
             (["kanban", "--board", "b", "complete", "t_1", "t_2", "--result", "ok"],
              ("POST", "/api/plugins/kanban/tasks/bulk", {"board": "b"}, {"ids": ["t_1", "t_2"], "status": "done", "result": "ok"})),
             (["kanban", "assign", "t_1", "none"], ("PATCH", "/api/plugins/kanban/tasks/t_1", {}, {"assignee": ""})),
+            (["gateway-connections", "launch-mode", "--body", '{"mode": "x"}'],
+             ("POST", "/api/gateway-connections/launch-mode", {}, {"mode": "x"})),
             (["kanban", "unlink", "a", "b"], ("DELETE", "/api/plugins/kanban/links", {"parent_id": "a", "child_id": "b"}, None)),
         ]
         for argv, want in cases:

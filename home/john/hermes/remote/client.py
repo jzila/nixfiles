@@ -125,6 +125,8 @@ def run(key, /, **values):
             path = path.replace(f"{{{name}}}", urllib.parse.quote(str(value), safe=""))
         elif where == "query":
             query[name] = json.dumps(value) if isinstance(value, bool) else value
+        elif where == "body":
+            body = value
         else:
             body[name] = value
     return call(op["method"], path, query, multipart(body.items()) if op["body"] == "form" else body if op["body"] else None)
