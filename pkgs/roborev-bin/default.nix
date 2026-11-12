@@ -2,27 +2,28 @@
 #
 # roborev used to ship a flake, and this config consumed it as an input.
 # Upstream dropped the flake and moved to github:kenn-io/roborev, so pin the
-# goreleaser archives instead. They hold one statically linked Go binary per
-# platform, so there is nothing to patch or link against.
+# goreleaser archives instead. They hold one Go binary per platform; the Linux
+# ones are cgo builds against glibc, so autoPatchelf fixes their interpreter.
 #
 # Bump with ./scripts/update-bin.sh roborev-bin, which rewrites sources.json.
 {
   lib,
-  stdenvNoCC,
+  stdenv,
   fetchurl,
   installShellFiles,
+  autoPatchelfHook,
   versionCheckHook,
   writableTmpDirAsHomeHook,
 }:
 
 let
   sources = lib.importJSON ./sources.json;
-  inherit (stdenvNoCC.hostPlatform) system;
+  inherit (stdenv.hostPlatform) system;
   source =
     sources.systems.${system}
       or (throw "roborev-bin: no official roborev release build for ${system}");
 in
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "roborev-bin";
   version = sources.version;
 
@@ -32,7 +33,7 @@ stdenvNoCC.mkDerivation {
   # unpackPhase has no sourceRoot to settle on.
   dontUnpack = true;
 
-  nativeBuildInputs = [ installShellFiles ];
+  nativeBuildInputs = [ installShellFiles ] ++ lib.optional stdenv.hostPlatform.isElf autoPatchelfHook;
 
   installPhase = ''
     runHook preInstall
@@ -48,7 +49,11 @@ stdenvNoCC.mkDerivation {
   # signature the linker gave them. Stripping would break it.
   dontStrip = true;
 
-  postFixup = lib.optionalString (stdenvNoCC.buildPlatform.canExecute stdenvNoCC.hostPlatform) ''
+  # The completions below run the binary, and the hook would only patch it after them.
+  dontAutoPatchelf = true;
+  postFixup = lib.optionalString stdenv.hostPlatform.isElf ''
+    autoPatchelf "$out"
+  '' + lib.optionalString (stdenv.buildPlatform.canExecute stdenv.hostPlatform) ''
     installShellCompletion --cmd roborev \
       --bash <("$out/bin/roborev" completion bash) \
       --zsh <("$out/bin/roborev" completion zsh) \

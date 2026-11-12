@@ -1,21 +1,21 @@
 {
-  "version": "0.20.0",
+  "version": "0.23.0",
   "systems": {
     "aarch64-darwin": {
-      "url": "https://github.com/kenn-io/kata/releases/download/v0.20.0/kata_0.20.0_homebrew_darwin_arm64.tar.gz",
-      "hash": "sha256-0xhQN/tKBPwTp2WolSoIqcnURPCEWS7RZIxtjGtdzXY="
+      "url": "https://github.com/kenn-io/kata/releases/download/v0.23.0/kata_0.23.0_homebrew_darwin_arm64.tar.gz",
+      "hash": "sha256-Dq13EviCfJzGvZ4NWSKEJtsSAx1gWRaGlMn/rxcXSRY="
     },
     "x86_64-darwin": {
-      "url": "https://github.com/kenn-io/kata/releases/download/v0.20.0/kata_0.20.0_homebrew_darwin_amd64.tar.gz",
-      "hash": "sha256-lfzdbw3GABI0gbnYPF7MYHTd+hunI4U1CcFl4Hwe86A="
+      "url": "https://github.com/kenn-io/kata/releases/download/v0.23.0/kata_0.23.0_homebrew_darwin_amd64.tar.gz",
+      "hash": "sha256-hRq1H2cYAFhGv2xccsADWfCwnHhdbXHf2ccTYkdlTqk="
     },
     "aarch64-linux": {
-      "url": "https://github.com/kenn-io/kata/releases/download/v0.20.0/kata_0.20.0_homebrew_linux_arm64.tar.gz",
-      "hash": "sha256-3mne6Lh6Peft8j3WuketujRwgcYcA3Mg4J7VqoPBeqc="
+      "url": "https://github.com/kenn-io/kata/releases/download/v0.23.0/kata_0.23.0_homebrew_linux_arm64.tar.gz",
+      "hash": "sha256-Emajdz8R6BtBIcnPaHTg+CrnL0wRI2QLC6ZwuprLdpw="
     },
     "x86_64-linux": {
-      "url": "https://github.com/kenn-io/kata/releases/download/v0.20.0/kata_0.20.0_homebrew_linux_amd64.tar.gz",
-      "hash": "sha256-s1eBdRzzahljvld8krj3GhOypeyTTe1iDhsQ5qaFrGw="
+      "url": "https://github.com/kenn-io/kata/releases/download/v0.23.0/kata_0.23.0_homebrew_linux_amd64.tar.gz",
+      "hash": "sha256-TNFjKpfryK9KDJAmml4kKMFbttchth8V+IiiBouzqzE="
     }
   },
   "update": {
