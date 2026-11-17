@@ -361,15 +361,16 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1794427975,
-        "narHash": "sha256-rjinsqlo9CqQb/hmJRlXT+Y5uQ+E+/Mf39i/xYlKZt8=",
-        "owner": "NousResearch",
+        "lastModified": 1794944290,
+        "narHash": "sha256-8JdUA2bgMuXAKeNPtCNF2mhLJwuViFZOfu0n/Yye8FU=",
+        "owner": "jzila",
         "repo": "hermes-agent",
-        "rev": "6a0d2d12815c0546b0bcaf05046e2fe3293f60aa",
+        "rev": "6fb220dd931b152394035b65994445b1ce154449",
         "type": "github"
       },
       "original": {
-        "owner": "NousResearch",
+        "owner": "jzila",
+        "ref": "fix-darwin-pnpm-deps-hash",
         "repo": "hermes-agent",
         "type": "github"
       }
