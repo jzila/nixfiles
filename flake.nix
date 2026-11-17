@@ -57,7 +57,9 @@
     };
 
     # Hermes Agent ships its own flake (package + Home Manager module).
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    # A fork branch of upstream main plus NousResearch/hermes-agent#150967, so
+    # pnpm-deps matches its hash on darwin (#150713); back to upstream once merged.
+    hermes-agent.url = "github:jzila/hermes-agent/fix-darwin-pnpm-deps-hash";
 
     mac-app-util = {
       url = "github:hraban/mac-app-util";
