@@ -444,11 +444,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794384845,
-        "narHash": "sha256-qgS1cEPC1DNshWQl5NCkEUeKdwewQkfbH/CXh9JW2E4=",
+        "lastModified": 1794643943,
+        "narHash": "sha256-7aLhuzNB4yhA/45O0wifMSKZQYx2voT1gRc1WD3AzFA=",
         "owner": "jzila",
         "repo": "nix-derivations",
-        "rev": "2dafd800d99304d5631a5a297386d7e83ef1446e",
+        "rev": "930a3eed47948c9bd427e4fb435ec70124216e5c",
         "type": "github"
       },
       "original": {
